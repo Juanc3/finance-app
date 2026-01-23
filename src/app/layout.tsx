@@ -3,7 +3,9 @@ import { Outfit } from 'next/font/google';
 import './globals.css';
 import { StoreProvider } from '@/context/StoreContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { ToastProvider } from '@/context/ToastContext';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -21,15 +23,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${outfit.variable} font-sans antialiased bg-background text-foreground min-h-screen selection:bg-violet-500/30`}
       >
-        <AuthProvider>
-          <StoreProvider>
-            <AppLayout>{children}</AppLayout>
-          </StoreProvider>
-        </AuthProvider>
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+          <AuthProvider>
+            <StoreProvider>
+              <ToastProvider>
+                  <AppLayout>{children}</AppLayout>
+              </ToastProvider>
+            </StoreProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

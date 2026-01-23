@@ -80,36 +80,36 @@ export default function AnalysisPage() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-6rem)] gap-4 pb-8 animate-in fade-in duration-500">
       <div className="flex-none">
-        <h1 className="text-2xl font-bold text-white mb-2">Análisis</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Análisis</h1>
         
         {/* Comparison Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <GlassCard className="p-4 flex items-center justify-between">
                 <div>
-                    <h3 className="text-xs font-medium text-slate-400">Este Mes (Gastos)</h3>
-                    <p className="text-2xl font-bold text-white">{getFormattedCurrency(metrics.thisMonthExpense)}</p>
+                    <h3 className="text-xs font-medium text-muted-foreground">Este Mes (Gastos)</h3>
+                    <p className="text-2xl font-bold text-foreground">{getFormattedCurrency(metrics.thisMonthExpense)}</p>
                 </div>
                 <div className="text-right">
-                    <span className={cn("text-xs flex items-center justify-end font-medium", metrics.monthDiff > 0 ? "text-red-400" : "text-emerald-400")}>
+                    <span className={cn("text-xs flex items-center justify-end font-medium", metrics.monthDiff > 0 ? "text-red-500" : "text-emerald-500")}>
                         {metrics.monthDiff > 0 ? <ArrowUpRight className="h-3 w-3"/> : <ArrowDownRight className="h-3 w-3"/>}
                         {Math.abs(metrics.monthPercent).toFixed(1)}%
                     </span>
-                    <span className="text-[10px] text-slate-500">vs mes anterior</span>
+                    <span className="text-[10px] text-muted-foreground">vs mes anterior</span>
                 </div>
             </GlassCard>
 
             <GlassCard className="p-4">
-                <h3 className="text-xs font-medium text-slate-400">Mes Pasado (Gastos)</h3>
-                <p className="text-2xl font-bold text-white">{getFormattedCurrency(metrics.lastMonthExpense)}</p>
+                <h3 className="text-xs font-medium text-muted-foreground">Mes Pasado (Gastos)</h3>
+                <p className="text-2xl font-bold text-foreground">{getFormattedCurrency(metrics.lastMonthExpense)}</p>
             </GlassCard>
 
             <GlassCard className="p-4">
-                <h3 className="text-xs font-medium text-slate-400">Este Año (Gastos)</h3>
-                <p className="text-2xl font-bold text-white">{getFormattedCurrency(metrics.thisYearExpense)}</p>
+                <h3 className="text-xs font-medium text-muted-foreground">Este Año (Gastos)</h3>
+                <p className="text-2xl font-bold text-foreground">{getFormattedCurrency(metrics.thisYearExpense)}</p>
             </GlassCard>
 
             <GlassCard className="p-4 border-blue-500/30">
-                <h3 className="text-xs font-medium text-slate-400">Ahorros Totales</h3>
+                <h3 className="text-xs font-medium text-muted-foreground">Ahorros Totales</h3>
                 <p className="text-2xl font-bold text-blue-500">{getFormattedCurrency(metrics.totalSavings)}</p>
             </GlassCard>
         </div>
@@ -120,17 +120,17 @@ export default function AnalysisPage() {
          {/* Row 1: Yearly Overview (Stacked) & User Comparison */}
          <div className="lg:col-span-8 lg:row-span-1 min-h-75 lg:min-h-0">
             <GlassCard className="flex flex-col h-full">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 shrink-0">
-                    <TrendingUp className="h-4 w-4 text-violet-400"/>
+                <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2 shrink-0">
+                    <TrendingUp className="h-4 w-4 text-primary"/>
                     Resumen Anual (Gastos vs Ahorros)
                 </h3>
                 <div className="flex-1 w-full min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={monthlyData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                            <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
-                            <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#fff' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} />
+                            <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                            <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--foreground)' }} cursor={{ fill: 'var(--muted)', opacity: 0.1 }} />
                             <Legend />
                             <Bar dataKey="Expense" fill="#ef4444" stackId="a" radius={[0, 0, 4, 4]} />
                             <Bar dataKey="Saving" fill="#3b82f6" stackId="a" radius={[4, 4, 0, 0]} />

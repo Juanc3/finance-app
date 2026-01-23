@@ -37,7 +37,7 @@ export function IncomeVsExpenseChart({ className }: { className?: string }) {
 
   return (
     <GlassCard className={cn("flex flex-col", className)}>
-      <h3 className="text-xl font-bold text-white mb-4 shrink-0">Entra / Sale / Ahorra</h3>
+      <h3 className="text-xl font-bold text-foreground mb-4 shrink-0">Entra / Sale / Ahorra</h3>
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -67,12 +67,12 @@ const CustomTooltip = ({ active, payload, getFormattedCurrency }: any) => {
     if (active && payload && payload.length) {
       const { name, value, color } = payload[0].payload;
       return (
-         <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-lg shadow-xl backdrop-blur-md">
+         <div className="bg-popover/90 border border-border p-3 rounded-lg shadow-xl backdrop-blur-md">
            <div className="flex items-center gap-2 mb-1">
              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }} />
-             <span className="text-white font-semibold text-sm">{name}</span>
+             <span className="text-popover-foreground font-semibold text-sm">{name}</span>
            </div>
-           <div className="text-slate-300 ml-5 font-mono text-sm">
+           <div className="text-muted-foreground ml-5 font-mono text-sm">
              {getFormattedCurrency(value)}
            </div>
          </div>

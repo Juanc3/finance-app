@@ -30,46 +30,47 @@ export function SummaryCards() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Balance Card */}
-        <GlassCard gradient className="relative overflow-hidden border-violet-500/30">
+        <GlassCard gradient className="relative overflow-hidden border-primary/30">
           <div className="absolute top-0 right-0 p-4 opacity-10">
-            <DollarSign className="h-24 w-24 text-white" />
+            <DollarSign className="h-24 w-24 text-foreground" />
           </div>
-          <h3 className="text-sm font-medium text-slate-300">Balance Neto</h3>
-          <p className="text-4xl font-bold text-white mt-2">{getFormattedCurrency(balance)}</p>
+          <h3 className="text-sm font-medium text-muted-foreground">Balance Neto</h3>
+          <p className="text-4xl font-bold text-foreground mt-2">{getFormattedCurrency(balance)}</p>
           <div className="mt-4 flex items-center text-sm">
-            <span className="bg-violet-500/10 px-2 py-1 rounded text-violet-300 font-medium">Total Histórico</span>
+            <span className="bg-primary/10 px-2 py-1 rounded text-primary font-medium">Total Histórico</span>
           </div>
         </GlassCard>
 
         {/* Income Card */}
         <GlassCard className="relative overflow-hidden">
-             <h3 className="text-sm font-medium text-slate-400">Ingresos Totales</h3>
-             <p className="text-3xl font-bold text-emerald-400 mt-2">+{getFormattedCurrency(totalIncome)}</p>
-             <p className="text-xs text-slate-500 mt-2">Entradas</p>
+             <h3 className="text-sm font-medium text-muted-foreground">Ingresos Totales</h3>
+             <p className="text-3xl font-bold text-emerald-500 mt-2">+{getFormattedCurrency(totalIncome)}</p>
+             <p className="text-xs text-muted-foreground mt-2">Entradas</p>
         </GlassCard>
 
         {/* Expense Card */}
         <GlassCard className="relative overflow-hidden">
-             <h3 className="text-sm font-medium text-slate-400">Gastos Totales</h3>
-             <p className="text-3xl font-bold text-red-400 mt-2">-{getFormattedCurrency(totalExpense)}</p>
-             <p className="text-xs text-slate-500 mt-2">Salidas</p>
+             <h3 className="text-sm font-medium text-muted-foreground">Gastos Totales</h3>
+             <p className="text-3xl font-bold text-red-500 mt-2">-{getFormattedCurrency(totalExpense)}</p>
+             <p className="text-xs text-muted-foreground mt-2">Salidas</p>
         </GlassCard>
       </div>
       
       {/* User Contribution Section (Expenses) */}
-      <h3 className="text-lg font-bold text-white">Desglose de Gastos por Usuario</h3>
+      <h3 className="text-lg font-bold text-foreground">Desglose de Gastos por Usuario</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {userExpenses.map((u) => (
             <GlassCard key={u.id} className="relative flex items-center justify-between p-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
+                   {/* Maintain user specific colors if they are dynamic, otherwise use variables if possible. Assuming u.color is a class like 'bg-red-500' */}
                    <div className={`h-3 w-3 rounded-full ${u.color}`} />
-                   <h3 className="text-sm font-medium text-slate-300">Pagado por {u.name}</h3>
+                   <h3 className="text-sm font-medium text-muted-foreground">Pagado por {u.name}</h3>
                 </div>
-                <p className="text-2xl font-bold text-white">{getFormattedCurrency(u.total)}</p>
+                <p className="text-2xl font-bold text-foreground">{getFormattedCurrency(u.total)}</p>
               </div>
               <div className="text-right">
-                 <span className="text-2xl font-bold text-slate-500 opacity-20">{totalExpense > 0 ? Math.round((u.total / totalExpense) * 100) : 0}%</span>
+                 <span className="text-2xl font-bold text-muted-foreground opacity-20">{totalExpense > 0 ? Math.round((u.total / totalExpense) * 100) : 0}%</span>
               </div>
             </GlassCard>
           ))}

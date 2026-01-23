@@ -60,27 +60,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#020617] p-4 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-900 via-[#020617] to-[#020617]">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-500">
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-600/20 mb-4">
-            <Wallet className="h-6 w-6 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg shadow-violet-600/20 mb-4">
+            <Wallet className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl font-bold text-foreground tracking-tight">
             {isSignUp ? "Crear una cuenta" : "Bienvenido"}
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             {isSignUp
               ? "Empieza a registrar tus finanzas compartidas hoy"
               : "Ingresa tus datos para acceder a tu panel"}
           </p>
         </div>
 
-        <GlassCard className="border-white/10 bg-slate-900/50 backdrop-blur-xl">
+        <GlassCard className="border-border bg-card/50 backdrop-blur-xl">
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Nombre
                 </label>
                 <input
@@ -95,7 +95,7 @@ export default function LoginPage() {
             )}
             
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Correo electrónico
               </label>
               <input
@@ -109,7 +109,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Contraseña
               </label>
               <input
@@ -124,7 +124,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center">
                 {error}
               </div>
             )}
@@ -139,11 +139,11 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               {isSignUp ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?"}{" "}
               <button
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                className="font-medium text-primary hover:text-primary/80 transition-colors"
               >
                 {isSignUp ? "Inicia sesión" : "Regístrate"}
               </button>

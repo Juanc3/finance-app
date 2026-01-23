@@ -1,11 +1,13 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useStore, Transaction } from "@/context/StoreContext";
+import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Trash2, Pencil } from "lucide-react";
-import React from "react";
+import { useState } from "react";
 
 interface TransactionListProps {
   className?: string;
@@ -13,48 +15,53 @@ interface TransactionListProps {
 }
 
 export function TransactionList({ className, onEdit }: TransactionListProps) {
-  const { transactions, users, deleteTransaction, getFormattedCurrency } = useStore();
+  const { transactions, users, categories, deleteTransaction, getFormattedCurrency } = useStore();
+  const { toast } = useToast();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const handleDeleteConfirm = () => {
+    if (deleteId) {
+        deleteTransaction(deleteId);
+        setDeleteId(null);
+        toast({ type: "error", title: "Transacción eliminada", message: "La transacción ha sido eliminada correctamente." });
+    }
+  };
 
   if (transactions.length === 0) {
     return (
       <GlassCard className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="bg-slate-800/50 p-4 rounded-full mb-4">
+        <div className="bg-muted p-4 rounded-full mb-4">
             <span className="text-2xl">💸</span>
         </div>
-        <h3 className="text-lg font-medium text-white">Aún no hay transacciones</h3>
-        <p className="text-slate-400 max-w-xs mx-auto mt-2">
+        <h3 className="text-lg font-medium text-foreground">Aún no hay transacciones</h3>
+        <p className="text-muted-foreground max-w-xs mx-auto mt-2">
           Agrega tu primer gasto para comenzar a registrar tu economía compartida.
         </p>
       </GlassCard>
     );
   }
 
-  const emojis: Record<string, string> = {
-    Comida: '🍔',
-    Casa: '🏠',
-    Utilidades: '💡',
-    Entretenimiento: '🎬',
-    Transporte: '🚗',
-    Shopping: '🛍️',
-    Viaje: '✈️',
-  }
-
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      <h3 className="text-xl font-bold text-white shrink-0">Actividad Reciente</h3>
+      <h3 className="text-xl font-bold text-foreground shrink-0">Actividad Reciente</h3>
       <div className={cn("space-y-3 overflow-y-auto pr-2 flex-1 min-h-0", !className && "max-h-125 lg:max-h-none")}>
         {transactions.map((t) => {
           const payer = users.find((u) => u.id === t.paidBy);
+          const category = categories.find(c => c.name === t.category);
+          
+          // Fallback if category not found (e.g. deleted or old)
+          const catIcon = category?.icon || '💸';
+          const catColor = category?.color || 'bg-muted';
+
           return (
             <GlassCard key={t.id} className="flex items-center justify-between p-4 group">
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-lg shrink-0">
-                    {/* Emoji based on category could go here, simplicity for now */}
-                    {emojis[t.category] || '💸'}
+                <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl text-lg shrink-0 shadow-lg text-white", catColor)}>
+                    {catIcon}
                 </div>
                 <div>
-                  <p className="font-medium text-white">{t.description}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="font-medium text-foreground">{t.description}</p>
+                  <p className="text-xs text-muted-foreground">
                     {format(new Date(t.date), 'MMM d, h:mm a')} • {t.category}
                   </p>
                 </div>
@@ -65,15 +72,15 @@ export function TransactionList({ className, onEdit }: TransactionListProps) {
                   <p className={cn(
                     "font-bold", 
                     t.type === 'income' 
-                        ? 'text-emerald-400' 
+                        ? 'text-emerald-500' 
                         : t.type === 'saving' 
                             ? 'text-blue-500' 
-                            : 'text-red-400'
+                            : 'text-red-500'
                   )}>
                     {t.type === 'income' ? '+' : ''}
                     {getFormattedCurrency(t.amount, t.currency)}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {t.type === 'income' ? 'ganado por' : 'pagado por'}{' '}
                     <span className={payer?.color.replace('bg-', 'text-')}>{payer?.name}</span>
                   </p>
@@ -82,14 +89,14 @@ export function TransactionList({ className, onEdit }: TransactionListProps) {
                   {onEdit && (
                     <button
                         onClick={() => onEdit(t)}
-                        className="p-2 text-slate-600 hover:text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="p-2 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                         <Pencil className="h-4 w-4" />
                     </button>
                   )}
                   <button
-                      onClick={() => deleteTransaction(t.id)}
-                      className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setDeleteId(t.id)}
+                      className="p-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                       <Trash2 className="h-4 w-4" />
                   </button>
@@ -99,6 +106,17 @@ export function TransactionList({ className, onEdit }: TransactionListProps) {
           );
         })}
       </div>
+
+       <ConfirmModal 
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+        title="¿Eliminar transacción?"
+        description="Esta acción eliminará la transacción permanentemente y afectará los balances."
+        confirmText="Eliminar"
+        variant="danger"
+      />
+
     </div>
   );
 }

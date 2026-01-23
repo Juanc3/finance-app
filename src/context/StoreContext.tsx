@@ -10,6 +10,7 @@ export type User = {
   name: string;
   color: string; // Tailwind class
   hexColor: string; // Hex for charts
+  groupId?: string;
 };
 
 export type Transaction = {
@@ -22,6 +23,7 @@ export type Transaction = {
   isShared: boolean; // If true, splits 50/50 (for simplicity initially)
   currency: string;
   type: 'income' | 'expense' | 'saving';
+  groupId?: string;
 };
 
 export type Category = {
@@ -42,7 +44,9 @@ export type StoreContextType = {
   getFormattedCurrency: (amount: number, currency?: string) => string;
   categories: Category[];
   addCategory: (category: Omit<Category, "id">) => void;
+  editCategory: (id: string, updates: Partial<Omit<Category, "id">>) => void;
   deleteCategory: (id: string) => void;
+  updateGroup: (newGroupId: string) => Promise<void>;
   loading: boolean;
 };
 
@@ -63,10 +67,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const fetchData = async () => {
       setLoading(true);
       
-      // 1. Fetch Users (Profiles)
-      const { data: profiles, error: profilesError } = await supabase
+      // 1. Fetch Current User's Group
+      const { data: myProfile, error: myProfileError } = await supabase
         .from("profiles")
-        .select("*");
+        .select("group_id")
+        .eq("id", session.user.id)
+        .single();
+        
+      if (myProfileError && myProfileError.code !== 'PGRST116') { // PGRST116 is "Row not found" (no profile yet), which is fine
+          console.error("Error fetching my profile group:", myProfileError);
+      }
+        
+      const myGroupId = myProfile?.group_id;
+
+      // 2. Fetch Users (Profiles) - Filter by Group
+      let profilesQuery = supabase.from("profiles").select("*");
+      
+      if (myGroupId) {
+        profilesQuery = profilesQuery.eq("group_id", myGroupId);
+      } else {
+        // Fallback: If no group, only show self
+        profilesQuery = profilesQuery.eq("id", session.user.id);
+      }
+
+      const { data: profiles, error: profilesError } = await profilesQuery;
       
       if (profilesError) {
         console.error("Error fetching profiles:", profilesError);
@@ -76,6 +100,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           name: p.name,
           color: p.color,
           hexColor: p.hex_color,
+          groupId: p.group_id,
         }));
         setUsers(mappedUsers);
         
@@ -84,14 +109,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(me || mappedUsers[0]);
       }
 
-      // 2. Fetch Transactions
-      const { data: txs, error: txsError } = await supabase
+      // 3. Fetch Transactions - Filter by Group ID (Strict)
+      let txQuery = supabase
         .from("transactions")
         .select("*")
         .order("date", { ascending: false });
+        
+      if (myGroupId) {
+        txQuery = txQuery.eq("group_id", myGroupId);
+      } else {
+        // Fallback
+        txQuery = txQuery.eq("paid_by", "none"); 
+      }
+
+      const { data: txs, error: txsError } = await txQuery;
 
       if (txsError) {
-        console.error("Error fetching transactions:", txsError);
+          // Ignore lint disable here, it's fine for debugging
+         console.error("Error fetching transactions:", JSON.stringify(txsError, null, 2));
       } else {
         const mappedTxs = txs.map((t: any) => ({
           id: t.id,
@@ -103,29 +138,57 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           isShared: t.is_shared,
           currency: t.currency || "USD",
           type: t.type || 'expense',
+          groupId: t.group_id,
         }));
         setTransactions(mappedTxs);
       }
 
       // 3. Fetch Categories
-      const { data: cats, error: catsError } = await supabase
+      // STRICT: Only fetch my group's categories
+      let catsQuery = supabase
         .from("categories")
         .select("*")
         .order("name");
+        
+      if (myGroupId) {
+         catsQuery = catsQuery.eq("group_id", myGroupId);
+      } else {
+         // Should not happen really if everyone has a group, but fallback to empty or specific user
+         catsQuery = catsQuery.eq("id", "none"); 
+      }
+
+      const { data: cats, error: catsError } = await catsQuery;
 
       if (catsError) {
-        // Fallback to defaults if table missing
-        // Fallback to defaults if table missing
-        setCategories([
-          { id: "1", name: "Comida", icon: "🍔", color: "bg-orange-500" },
-          { id: "2", name: "Casa", icon: "🏠", color: "bg-blue-500" },
-          { id: "3", name: "Servicios", icon: "💡", color: "bg-yellow-500" },
-          { id: "4", name: "Entretenimiento", icon: "🎬", color: "bg-purple-500" },
-          { id: "5", name: "Transporte", icon: "🚗", color: "bg-red-500" },
-          { id: "6", name: "Compras", icon: "🛍️", color: "bg-pink-500" },
-          { id: "7", name: "Viajes", icon: "✈️", color: "bg-sky-500" },
-          { id: "8", name: "Otros", icon: "📝", color: "bg-gray-500" },
-        ]);
+        console.error("Error fetching categories:", catsError);
+      } else if (!cats || cats.length === 0) {
+        // Optimization: If no categories exist for this group, seed defaults!
+        // This handles "New Group" creation nicely.
+        if (myGroupId) {
+             const defaultCats = [
+                { name: "Comida", icon: "🍔", color: "bg-orange-500", group_id: myGroupId },
+                { name: "Casa", icon: "🏠", color: "bg-blue-500", group_id: myGroupId },
+                { name: "Servicios", icon: "💡", color: "bg-yellow-500", group_id: myGroupId },
+                { name: "Entretenimiento", icon: "🎬", color: "bg-purple-500", group_id: myGroupId },
+                { name: "Transporte", icon: "🚗", color: "bg-red-500", group_id: myGroupId },
+                { name: "Compras", icon: "🛍️", color: "bg-pink-500", group_id: myGroupId },
+                { name: "Viajes", icon: "✈️", color: "bg-sky-500", group_id: myGroupId },
+                { name: "Otros", icon: "📝", color: "bg-gray-500", group_id: myGroupId },
+             ];
+             
+             // Insert into DB
+             const { data: newCats } = await supabase.from("categories").insert(defaultCats).select();
+             
+             if (newCats) {
+                 const mappedCats = newCats.map((c: any) => ({
+                    id: c.id,
+                    name: c.name,
+                    icon: c.icon,
+                    color: c.color,
+                  }));
+                  setCategories(mappedCats);
+             }
+        }
       } else {
         setCategories(cats);
       }
@@ -160,6 +223,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session]);
 
+  const updateGroup = async (newGroupId: string) => {
+    if (!session?.user) return;
+    
+    setLoading(true);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ group_id: newGroupId })
+      .eq("id", session.user.id);
+      
+    if (error) {
+      console.error("Error updating group:", error);
+    } else {
+        // Refresh page/data effectively by triggering effect or calling fetchData if it was extracted
+        // But since useEffect depends on session, we can just reload window or refetch. 
+        // For better UX, let's just create a fetchData function outside/useCallback or reload.
+        // Easiest is to reload to ensure clean state or refetch manually.
+        window.location.reload();
+    }
+  };
+
   const switchUser = (userId: string) => {
     const user = users.find((u) => u.id === userId);
     if (user) setCurrentUser(user);
@@ -171,6 +255,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const newTx = { ...t, id: tempId };
     setTransactions((prev) => [newTx, ...prev]);
 
+    // Get current group
+    const myUser = users.find(u => u.id === session?.user?.id);
+    const myGroupId = myUser?.groupId;
+
     const { error } = await supabase.from("transactions").insert({
       amount: t.amount,
       description: t.description,
@@ -180,6 +268,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       is_shared: t.isShared,
       currency: t.currency,
       type: t.type,
+      group_id: myGroupId || null,
     });
 
     if (error) {
@@ -235,15 +324,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const newCat = { ...c, id: tempId };
     setCategories((prev) => [...prev, newCat]);
 
+    // Find my group ID from users list (since currentUser might be switched)
+    const myUser = users.find(u => u.id === session?.user?.id);
+    const myGroupId = myUser?.groupId;
+
     const { error } = await supabase.from("categories").insert({
       name: c.name,
       icon: c.icon,
       color: c.color,
+      group_id: myGroupId || null,
     });
 
     if (error) {
       console.error("Error adding category:", error);
       setCategories((prev) => prev.filter((cat) => cat.id !== tempId));
+    }
+  };
+
+  const editCategory = async (id: string, updates: Partial<Omit<Category, "id">>) => {
+    // Optimistic
+    const prevCats = [...categories];
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
+    );
+
+    const { error } = await supabase
+      .from("categories")
+      .update({
+        name: updates.name,
+        icon: updates.icon,
+        color: updates.color,
+      })
+      .eq("id", id);
+      
+    if (error) {
+      console.error("Error editing category:", error);
+      setCategories(prevCats);
     }
   };
 
@@ -279,7 +395,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getFormattedCurrency,
         categories,
         addCategory,
+        editCategory,
         deleteCategory,
+        updateGroup,
         loading,
       }}
     >

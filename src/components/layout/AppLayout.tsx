@@ -35,7 +35,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row lg:overflow-hidden bg-slate-950 text-white">
+    <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row lg:overflow-hidden bg-background text-foreground">
       <AppSidebar />
       <main className="flex-1 min-w-0 p-4 sm:p-8 space-y-8 overflow-y-auto animate-in fade-in duration-500 scrollbar-thin scrollbar-thumb-violet-600/20 scrollbar-track-transparent">
         {children}

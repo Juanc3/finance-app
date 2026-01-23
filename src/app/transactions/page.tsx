@@ -26,12 +26,12 @@ export default function TransactionsPage() {
     <div className="flex flex-col min-h-[calc(100vh-6rem)] gap-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-white">Transactions</h1>
-          <p className="text-slate-400">Manage and view all shared expenses</p>
+          <h1 className="text-3xl font-bold text-foreground">Transacciones</h1>
+          <p className="text-muted-foreground">Administra y revisa todos los gastos compartidos</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
           <Plus className="h-4 w-4" />
-          Add Expense
+          Nueva Transacción
         </Button>
       </div>
 
