@@ -1,19 +1,12 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { Button } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useState } from "react";
-
-// Simple emoji picker list
-const ICONS = ["🍔", "🏠", "💡", "🎬", "🚗", "🛍️", "✈️", "📝", "🏋️", "🏥", "📚", "🎮", "🍷", "🎁", "👶", "🐶"];
-const COLORS = [
-  "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-yellow-500", "bg-lime-500", 
-  "bg-green-500", "bg-emerald-500", "bg-teal-500", "bg-cyan-500", "bg-sky-500", 
-  "bg-blue-500", "bg-indigo-500", "bg-violet-500", "bg-purple-500", "bg-fuchsia-500", 
-  "bg-pink-500", "bg-rose-500", "bg-slate-500"
-];
+import { IconPicker } from "@/components/ui/IconPicker";
+import { ColorPicker, AVAILABLE_COLORS } from "@/components/ui/ColorPicker";
+import { AVAILABLE_ICONS } from "@/components/ui/CategoryIcon";
 
 interface CategoryFormModalProps {
   isOpen: boolean;
@@ -30,7 +23,11 @@ export function CategoryFormModal({
   initialData,
   title,
 }: CategoryFormModalProps) {
-  const [formData, setFormData] = useState({ name: "", icon: ICONS[0], color: COLORS[0] });
+  // Default to first icon/color
+  const defaultIcon = AVAILABLE_ICONS[0].name;
+  const defaultColor = AVAILABLE_COLORS[0];
+  
+  const [formData, setFormData] = useState({ name: "", icon: defaultIcon, color: defaultColor });
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
@@ -39,10 +36,10 @@ export function CategoryFormModal({
         if (initialData) {
             setFormData(initialData);
         } else {
-            setFormData({ name: "", icon: ICONS[0], color: COLORS[0] });
+            setFormData({ name: "", icon: defaultIcon, color: defaultColor });
         }
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, defaultIcon, defaultColor]);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -91,39 +88,18 @@ export function CategoryFormModal({
             
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Icono</label>
-              <div className="flex flex-wrap gap-2">
-                {ICONS.map(icon => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, icon })}
-                    className={cn(
-                      "h-10 w-10 flex items-center justify-center rounded-lg text-xl hover:bg-muted transition-colors",
-                      formData.icon === icon ? "bg-muted ring-2 ring-primary" : "bg-muted/50"
-                    )}
-                  >
-                    {icon}
-                  </button>
-                ))}
-              </div>
+              <IconPicker 
+                selectedIcon={formData.icon} 
+                onSelect={(icon) => setFormData({ ...formData, icon })} 
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Color</label>
-              <div className="flex flex-wrap gap-2">
-                {COLORS.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, color })}
-                    className={cn(
-                      "h-8 w-8 rounded-full hover:scale-110 transition-transform",
-                      color,
-                      formData.color === color ? "ring-2 ring-background ring-offset-2 ring-offset-muted-foreground" : ""
-                    )}
-                  />
-                ))}
-              </div>
+              <ColorPicker 
+                selectedColor={formData.color} 
+                onSelect={(color) => setFormData({ ...formData, color })} 
+              />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-border">

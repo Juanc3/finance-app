@@ -21,9 +21,11 @@ export type Transaction = {
   date: string; // ISO string
   paidBy: string; // User ID
   isShared: boolean; // If true, splits 50/50 (for simplicity initially)
+  isRecurring?: boolean; // If true, repeats monthly
   currency: string;
   type: 'income' | 'expense' | 'saving';
   groupId?: string;
+  status?: 'pending' | 'paid'; // New field
 };
 
 export type Category = {
@@ -38,9 +40,10 @@ export type StoreContextType = {
   currentUser: User | null;
   switchUser: (userId: string) => void;
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, "id">) => void;
+  addTransaction: (transaction: Omit<Transaction, "id"> & { syncToGoogle?: boolean }) => void;
   editTransaction: (id: string, transaction: Partial<Omit<Transaction, "id">>) => void;
   deleteTransaction: (id: string) => void;
+  markAsPaid: (id: string) => void; // New function
   getFormattedCurrency: (amount: number, currency?: string) => string;
   categories: Category[];
   addCategory: (category: Omit<Category, "id">) => void;
@@ -74,7 +77,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .eq("id", session.user.id)
         .single();
         
-      if (myProfileError && myProfileError.code !== 'PGRST116') { // PGRST116 is "Row not found" (no profile yet), which is fine
+      if (myProfileError && myProfileError.code !== 'PGRST116') {
           console.error("Error fetching my profile group:", myProfileError);
       }
         
@@ -86,7 +89,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (myGroupId) {
         profilesQuery = profilesQuery.eq("group_id", myGroupId);
       } else {
-        // Fallback: If no group, only show self
         profilesQuery = profilesQuery.eq("id", session.user.id);
       }
 
@@ -104,29 +106,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }));
         setUsers(mappedUsers);
         
-        // Set current user logic
         const me = mappedUsers.find((u: any) => u.id === session.user.id);
         setCurrentUser(me || mappedUsers[0]);
       }
 
-      // 3. Fetch Transactions - Filter by Group ID (Strict)
+      // 3. Fetch Transactions
+      // We want: (group_id == myGroupId) OR (group_id IS NULL AND paid_by == me)
       let txQuery = supabase
         .from("transactions")
         .select("*")
         .order("date", { ascending: false });
         
       if (myGroupId) {
-        txQuery = txQuery.eq("group_id", myGroupId);
+        // Syntax for OR in Supabase: .or(`group_id.eq.${myGroupId},and(group_id.is.null,paid_by.eq.${session.user.id})`)
+        txQuery = txQuery.or(`group_id.eq.${myGroupId},and(group_id.is.null,paid_by.eq.${session.user.id})`);
       } else {
-        // Fallback
-        txQuery = txQuery.eq("paid_by", "none"); 
+        txQuery = txQuery.eq("paid_by", session.user.id); 
       }
 
       const { data: txs, error: txsError } = await txQuery;
 
       if (txsError) {
-          // Ignore lint disable here, it's fine for debugging
-         console.error("Error fetching transactions:", JSON.stringify(txsError, null, 2));
+          console.error("Error fetching transactions:", JSON.stringify(txsError, null, 2));
       } else {
         const mappedTxs = txs.map((t: any) => ({
           id: t.id,
@@ -136,9 +137,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           date: t.date,
           paidBy: t.paid_by,
           isShared: t.is_shared,
+          isRecurring: t.is_recurring,
           currency: t.currency || "USD",
           type: t.type || 'expense',
           groupId: t.group_id,
+          status: t.status || 'pending', // Map status
         }));
         setTransactions(mappedTxs);
       }
@@ -154,7 +157,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
          catsQuery = catsQuery.eq("group_id", myGroupId);
       } else {
          // Should not happen really if everyone has a group, but fallback to empty or specific user
-         catsQuery = catsQuery.eq("id", "none"); 
+         // Use a nil UUID to avoid syntax error, effectively returning nothing
+         catsQuery = catsQuery.eq("id", "00000000-0000-0000-0000-000000000000"); 
       }
 
       const { data: cats, error: catsError } = await catsQuery;
@@ -166,14 +170,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // This handles "New Group" creation nicely.
         if (myGroupId) {
              const defaultCats = [
-                { name: "Comida", icon: "🍔", color: "bg-orange-500", group_id: myGroupId },
-                { name: "Casa", icon: "🏠", color: "bg-blue-500", group_id: myGroupId },
-                { name: "Servicios", icon: "💡", color: "bg-yellow-500", group_id: myGroupId },
-                { name: "Entretenimiento", icon: "🎬", color: "bg-purple-500", group_id: myGroupId },
-                { name: "Transporte", icon: "🚗", color: "bg-red-500", group_id: myGroupId },
-                { name: "Compras", icon: "🛍️", color: "bg-pink-500", group_id: myGroupId },
-                { name: "Viajes", icon: "✈️", color: "bg-sky-500", group_id: myGroupId },
-                { name: "Otros", icon: "📝", color: "bg-gray-500", group_id: myGroupId },
+                { name: "Comida", icon: "Alimentación", color: "bg-orange-500", group_id: myGroupId },
+                { name: "Casa", icon: "Casa", color: "bg-blue-500", group_id: myGroupId },
+                { name: "Servicios", icon: "Servicios", color: "bg-yellow-500", group_id: myGroupId },
+                { name: "Entretenimiento", icon: "Entretenimiento", color: "bg-purple-500", group_id: myGroupId },
+                { name: "Transporte", icon: "Transporte", color: "bg-red-500", group_id: myGroupId },
+                { name: "Compras", icon: "Compras", color: "bg-pink-500", group_id: myGroupId },
+                { name: "Viajes", icon: "Viajes", color: "bg-sky-500", group_id: myGroupId },
+                { name: "Salud", icon: "Salud", color: "bg-emerald-500", group_id: myGroupId },
              ];
              
              // Insert into DB
@@ -249,15 +253,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (user) setCurrentUser(user);
   };
 
-  const addTransaction = async (t: Omit<Transaction, "id">) => {
+  // Extended transaction type for internal use (includes sync flag)
+  type TransactionInput = Omit<Transaction, "id"> & { syncToGoogle?: boolean };
+
+  const addTransaction = async (t: TransactionInput) => {
     // Optimistic update
     const tempId = uuidv4();
     const newTx = { ...t, id: tempId };
+    delete (newTx as any).syncToGoogle; // Remove flag before saving to state/db
+
     setTransactions((prev) => [newTx, ...prev]);
 
     // Get current group
     const myUser = users.find(u => u.id === session?.user?.id);
     const myGroupId = myUser?.groupId;
+
+    // IMPORTANT: If explicit 'isShared' is false (meaning Individual), force group_id to null.
+    // If it is true (or undefined), use the user's group.
+    
+    // Note: t.isShared comes from the form. 
+    // If t.isShared is true -> Group Transaction -> group_id = myGroupId
+    // If t.isShared is false -> Individual Transaction -> group_id = null
+    const targetGroupId = t.isShared ? myGroupId : null;
 
     const { error } = await supabase.from("transactions").insert({
       amount: t.amount,
@@ -266,16 +283,48 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       paid_by: t.paidBy,
       date: t.date,
       is_shared: t.isShared,
+      is_recurring: t.isRecurring,
       currency: t.currency,
       type: t.type,
-      group_id: myGroupId || null,
+      group_id: targetGroupId || null,
     });
 
     if (error) {
       console.error("Error adding transaction:", error);
       // Revert optimistic update
       setTransactions((prev) => prev.filter((x) => x.id !== tempId));
+    } else {
+        // Sync to Google Calendar if requested
+        console.log("Transaction added. Sync to Google?", t.syncToGoogle);
+        console.log("Provider Token Present?", !!session?.provider_token);
+        
+        if (t.syncToGoogle && session?.provider_token) {
+            console.log("Attempting to sync with Google Calendar...");
+            import("@/lib/googleCalendar").then(({ createGoogleEvent }) => {
+                createGoogleEvent(session.provider_token!, t)
+                    .then((data) => console.log("✅ Synced to Google Calendar:", data))
+                    .catch(err => console.error("❌ Failed to sync to Google:", err));
+            });
+        } else if (t.syncToGoogle && !session?.provider_token) {
+            console.warn("⚠️ Sync requested but no Google Token found. Please re-login.");
+        }
     }
+  };
+
+  const markAsPaid = async (id: string) => {
+      // Optimistic update
+      setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'paid' } : t));
+
+      const { error } = await supabase
+          .from("transactions")
+          .update({ status: 'paid' })
+          .eq("id", id);
+      
+      if (error) {
+          console.error("Error marking as paid:", error);
+          // Revert
+          setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'pending' } : t));
+      }
   };
 
   const editTransaction = async (id: string, updates: Partial<Omit<Transaction, "id">>) => {
@@ -294,6 +343,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         paid_by: updates.paidBy,
         date: updates.date,
         is_shared: updates.isShared,
+        is_recurring: updates.isRecurring,
         currency: updates.currency,
         type: updates.type,
       })
@@ -392,6 +442,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         addTransaction,
         editTransaction,
         deleteTransaction,
+        markAsPaid,
         getFormattedCurrency,
         categories,
         addCategory,

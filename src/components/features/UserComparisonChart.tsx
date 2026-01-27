@@ -1,6 +1,7 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useStore } from "@/context/StoreContext";
 import React, { useMemo } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -8,7 +9,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recha
 import { cn } from "@/lib/utils";
 
 export function UserComparisonChart({ className }: { className?: string }) {
-  const { transactions, users, getFormattedCurrency } = useStore();
+  const { transactions, users, getFormattedCurrency, loading } = useStore();
 
   const data = useMemo(() => {
     // ... logic
@@ -33,6 +34,22 @@ export function UserComparisonChart({ className }: { className?: string }) {
 
     return comparisonData;
   }, [transactions, users]);
+
+  if (loading) {
+      return (
+        <GlassCard className={cn("flex flex-col", className)}>
+            <Skeleton className="h-7 w-48 mb-4" />
+            <div className="flex-1 flex items-end gap-4 px-2">
+                 {[1, 2].map(i => (
+                    <div key={i} className="flex-1 space-y-2">
+                        <Skeleton className="h-[60%] w-full rounded-t-lg" />
+                        <Skeleton className="h-4 w-20 mx-auto" />
+                    </div>
+                 ))}
+            </div>
+        </GlassCard>
+      );
+  }
 
   if (transactions.length === 0) return null;
 

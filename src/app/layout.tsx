@@ -27,16 +27,11 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} font-sans antialiased bg-background text-foreground min-h-screen selection:bg-violet-500/30`}
       >
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <StoreProvider>
               <ToastProvider>
-                  <AppLayout>{children}</AppLayout>
+                <AppLayout>{children}</AppLayout>
               </ToastProvider>
             </StoreProvider>
           </AuthProvider>

@@ -2,6 +2,7 @@
 
 import { useStore, Category } from "@/context/StoreContext";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { CategoryFormModal } from "@/components/features/CategoryFormModal";
@@ -10,9 +11,10 @@ import { Trash2, Plus, ArrowLeft, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
 
 export default function CategoriesPage() {
-  const { categories, addCategory, editCategory, deleteCategory } = useStore();
+  const { categories, addCategory, editCategory, deleteCategory, loading } = useStore();
   const { toast } = useToast();
   
   // State for Add/Edit Form
@@ -73,31 +75,42 @@ export default function CategoriesPage() {
 
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((cat) => (
-          <GlassCard key={cat.id} className="p-4 flex items-center justify-between group hover:border-border/80 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className={cn("h-12 w-12 flex items-center justify-center rounded-xl text-2xl shadow-lg text-white", cat.color)}>
-                {cat.icon}
-              </div>
-              <span className="font-bold text-foreground text-lg">{cat.name}</span>
-            </div>
-            
-            <div className="flex items-center gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                   onClick={() => handleEditClick(cat)}
-                   className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                   onClick={() => setDeleteId(cat.id)}
-                   className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-            </div>
-          </GlassCard>
-        ))}
+        {loading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+                <GlassCard key={i} className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-xl" />
+                        <Skeleton className="h-6 w-32" />
+                    </div>
+                </GlassCard>
+            ))
+        ) : (
+            categories.map((cat) => (
+            <GlassCard key={cat.id} className="p-4 flex items-center justify-between group hover:border-border/80 transition-colors">
+                <div className="flex items-center gap-4">
+                <div className={cn("h-12 w-12 flex items-center justify-center rounded-xl shadow-lg text-white", cat.color)}>
+                    <CategoryIcon iconName={cat.icon} className="h-6 w-6" />
+                </div>
+                <span className="font-bold text-foreground text-lg">{cat.name}</span>
+                </div>
+                
+                <div className="flex items-center gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                    onClick={() => handleEditClick(cat)}
+                    className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                    >
+                    <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                    onClick={() => setDeleteId(cat.id)}
+                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                    >
+                    <Trash2 className="h-4 w-4" />
+                    </button>
+                </div>
+            </GlassCard>
+            ))
+        )}
       </div>
 
       {/* Form Modal */}

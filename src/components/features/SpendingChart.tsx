@@ -1,6 +1,7 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useStore } from "@/context/StoreContext";
 import { format, parseISO, startOfMonth, eachDayOfInterval, endOfMonth, isSameDay } from "date-fns";
 import React, { useMemo } from "react";
@@ -8,7 +9,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianG
 import { cn } from "@/lib/utils";
 
 export function SpendingChart({ className }: { className?: string }) {
-  const { transactions, users } = useStore();
+  const { transactions, users, loading } = useStore();
   const [viewMode, setViewMode] = React.useState<"type" | "user">("type");
 
   const data = useMemo(() => {
@@ -41,7 +42,7 @@ export function SpendingChart({ className }: { className?: string }) {
         // Breakdown by User (Only Expenses usually makes sense for 'Spending', but let's show Expenses)
         users.forEach(user => {
             item[user.name] = dayTransactions
-            .filter(t => t.paidBy === user.id && t.type === 'expense') // Only expenses for user view
+            .filter(t => t.paidBy === user.id && (t.type === 'expense' || !t.type)) // Default to expense
             .reduce((acc, t) => acc + t.amount, 0);
         });
       }
@@ -49,6 +50,20 @@ export function SpendingChart({ className }: { className?: string }) {
       return item;
     });
   }, [transactions, users, viewMode]);
+
+  if (loading) {
+    return (
+        <GlassCard className={cn("flex flex-col min-h-75 h-full", className)}>
+            <div className="flex items-center justify-between mb-4">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-8 w-32 rounded-lg" />
+            </div>
+            <div className="flex-1 w-full min-h-0">
+                 <Skeleton className="h-full w-full rounded-xl" />
+            </div>
+        </GlassCard>
+    )
+  }
 
   if (transactions.length === 0) return null;
 

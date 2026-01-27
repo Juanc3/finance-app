@@ -4,15 +4,17 @@ import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
-  BarChart3,
-  Home,
   LayoutDashboard,
   LogOut,
-  Menu,
-  Receipt,
-  Wallet,
-  X,
   Settings,
+  Wallet,
+  BarChart3,
+  CalendarDays,
+  Menu,
+  X,
+  Home,
+  Receipt,
+  Bell
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +34,8 @@ export function AppSidebar() {
     { label: "Panel", href: "/", icon: Home },
     { label: "Transacciones", href: "/transactions", icon: Receipt },
     { label: "Análisis", href: "/analysis", icon: BarChart3 },
+    { label: "Calendario", href: "/calendar", icon: CalendarDays },
+    { label: "Próximos", href: "/upcoming", icon: Bell },
     { label: "Categorías", href: "/categories", icon: LayoutDashboard },
     { label: "Configuración", href: "/settings", icon: Settings },
   ];
@@ -124,9 +128,11 @@ export function AppSidebar() {
                 </div>
                 <button 
                     onClick={signOut}
-                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                    className="flex items-center gap-2 p-2 px-3 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 rounded-lg transition-colors ml-2"
+                    title="Cerrar Sessión"
                 >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-3 w-3" />
+                    <span>Salir</span>
                 </button>
             </div>
         </div>

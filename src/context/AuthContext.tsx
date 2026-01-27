@@ -32,6 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
+      console.log("Auth Session Loaded:", { 
+        hasSession: !!session, 
+        hasProviderToken: !!session?.provider_token 
+      });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -53,8 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.warn("SignOut Warning:", error.message);
+    } catch (err) {
+      console.error("SignOut Critical Error:", err);
+    } finally {
+      // Always cleanup local state and redirect
+      setSession(null);
+      setUser(null);
+      router.push("/login");
+    }
   };
 
   return (

@@ -4,11 +4,14 @@ import React, { useEffect } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/context/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
+import { useReminders } from "@/hooks/useReminders";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+
+  useReminders();
 
   useEffect(() => {
     // Redirect logic
@@ -35,9 +38,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row lg:overflow-hidden bg-background text-foreground">
+    <div className="h-dvh flex flex-col lg:flex-row overflow-hidden bg-background text-foreground">
       <AppSidebar />
-      <main className="flex-1 min-w-0 p-4 sm:p-8 space-y-8 overflow-y-auto animate-in fade-in duration-500 scrollbar-thin scrollbar-thumb-violet-600/20 scrollbar-track-transparent">
+      <main className="flex-1 min-w-0 p-4 sm:p-8 space-y-8 h-full flex flex-col overflow-y-auto animate-in fade-in duration-500 custom-scrollbar">
         {children}
       </main>
     </div>

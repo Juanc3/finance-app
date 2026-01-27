@@ -1,18 +1,60 @@
 'use client';
 
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useStore } from '@/context/StoreContext';
 import { /* ArrowUpRight , ArrowDownRight ,*/ DollarSign } from 'lucide-react';
 import React from 'react';
 
 export function SummaryCards() {
-  const { transactions, users, getFormattedCurrency } = useStore();
+  const { transactions, users, getFormattedCurrency, loading } = useStore();
 
-  const totalIncome = transactions
+  if (loading) {
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             {[1, 2, 3].map((i) => (
+                <GlassCard key={i} className="h-32 flex flex-col justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-4 w-20" />
+                </GlassCard>
+             ))}
+          </div>
+          <Skeleton className="h-8 w-64" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {[1, 2].map(i => (
+                  <GlassCard key={i} className="h-24 flex items-center justify-between p-4">
+                     <div>
+                        <Skeleton className="h-4 w-32 mb-2" />
+                        <Skeleton className="h-8 w-24" />
+                     </div>
+                     <Skeleton className="h-8 w-12" />
+                  </GlassCard>
+               ))}
+          </div>
+        </div>
+      );
+  }
+
+  // Filter out future transactions, UNLESS they are marked as paid
+  const validTransactions = transactions.filter(t => {
+      // Logic: Include if date is <= today OR status === 'paid'
+      
+      if (t.status === 'paid') return true; // Always include if paid
+
+      const tDate = new Date(t.date);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      
+      return tDate <= endOfToday;
+  });
+
+  const totalIncome = validTransactions
     .filter(t => t.type === 'income')
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const totalExpense = transactions
+  const totalExpense = validTransactions
     .filter(t => t.type === 'expense' || !t.type) // Default to expense
     .reduce((acc, t) => acc + t.amount, 0);
 
@@ -20,7 +62,7 @@ export function SummaryCards() {
 
   // Calculate per user (Expenses only)
   const userExpenses = users.map((user) => {
-    const total = transactions
+    const total = validTransactions
       .filter((t) => t.paidBy === user.id && (t.type === 'expense' || !t.type))
       .reduce((acc, t) => acc + t.amount, 0);
     return { ...user, total };

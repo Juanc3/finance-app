@@ -1,6 +1,7 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useStore } from "@/context/StoreContext";
 import React, { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -8,7 +9,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recha
 import { cn } from "@/lib/utils";
 
 export function IncomeVsExpenseChart({ className }: { className?: string }) {
-  const { transactions, getFormattedCurrency } = useStore();
+  const { transactions, getFormattedCurrency, loading } = useStore();
 
   const data = useMemo(() => {
     // ... logic
@@ -32,6 +33,17 @@ export function IncomeVsExpenseChart({ className }: { className?: string }) {
       { name: 'Ahorros', value: savings, color: '#3b82f6' }, // Blue-500
     ];
   }, [transactions]);
+
+  if (loading) {
+     return (
+        <GlassCard className={cn("flex flex-col", className)}>
+            <Skeleton className="h-7 w-48 mb-4" />
+            <div className="flex-1 flex items-center justify-center">
+                 <Skeleton className="h-40 w-40 rounded-full" />
+            </div>
+        </GlassCard>
+     );
+  }
 
   if (transactions.length === 0) return null;
 

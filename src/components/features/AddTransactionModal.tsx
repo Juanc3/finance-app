@@ -5,80 +5,79 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { useStore, Transaction } from "@/context/StoreContext";
 import { cn } from "@/lib/utils";
 import { Plus, X, ChevronDown } from "lucide-react";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import React, { useState, useRef, useEffect } from "react";
 import { format } from "date-fns";
 
-const CURRENCIES = ["USD", "EUR", "ARS", "GBP", "BRL"];
+const CURRENCIES = ["ARS", "USD", "EUR", "GBP", "BRL"];
 
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   transactionToEdit?: Transaction | null;
+  defaultDate?: Date | null;
 }
 
-export function AddTransactionModal({ isOpen, onClose, transactionToEdit }: AddTransactionModalProps) {
+export function AddTransactionModal({ isOpen, onClose, transactionToEdit, defaultDate }: AddTransactionModalProps) {
   const { addTransaction, editTransaction, currentUser, users, categories } = useStore();
   
   // State
   const [type, setType] = useState<"income" | "expense" | "saving">("expense");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("ARS");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [paidBy, setPaidBy] = useState("");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [isShared, setIsShared] = useState(true); // Default to shared
+  const [syncToGoogle, setSyncToGoogle] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load data if editing
-  React.useEffect(() => {
+  useEffect(() => {
     if (transactionToEdit) {
       setType(transactionToEdit.type || "expense");
       setAmount(transactionToEdit.amount.toString());
-      setCurrency(transactionToEdit.currency || "USD");
+      setCurrency(transactionToEdit.currency || "ARS");
       setDescription(transactionToEdit.description);
       setCategory(transactionToEdit.category);
       setPaidBy(transactionToEdit.paidBy);
       setDate(format(new Date(transactionToEdit.date), "yyyy-MM-dd"));
+      setIsRecurring(transactionToEdit.isRecurring || false);
+      setIsShared(transactionToEdit.isShared ?? true);
     } else {
       // Reset defaults
       setType("expense");
       setAmount("");
       setDescription("");
+      setIsRecurring(false);
+      setIsShared(true);
       if (currentUser) setPaidBy(currentUser.id);
       // We generally want to preserve currency or default to USD, but reset if opening blank
-      setCurrency("USD");
-      setDate(format(new Date(), "yyyy-MM-dd"));
+      setCurrency("ARS");
+      setDate(defaultDate ? format(defaultDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
     }
     setIsCurrencyOpen(false);
-  }, [transactionToEdit, isOpen, currentUser]);
+  }, [transactionToEdit, isOpen, currentUser, defaultDate]);
 
-  // Close dropdown when clicking outside
+  // Handle click outside for currency dropdown
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCurrencyOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    };
 
-  // Update paidBy when users/currentUser loads (only if not editing)
-  React.useEffect(() => {
-    if (!transactionToEdit && currentUser) {
-      setPaidBy(currentUser.id);
-    } else if (!transactionToEdit && users.length > 0 && !paidBy) {
-      setPaidBy(users[0].id);
+    if (isCurrencyOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
     }
-  }, [currentUser, users, transactionToEdit, paidBy]);
 
-  // Set default category (only if not editing/set)
-  React.useEffect(() => {
-    if (categories.length > 0 && !category && !transactionToEdit) {
-      setCategory(categories[0].name);
-    }
-  }, [categories, category, transactionToEdit]);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isCurrencyOpen]);
 
   if (!isOpen) return null;
 
@@ -93,7 +92,8 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit }: AddT
         category,
         paidBy,
         date: new Date(date + 'T12:00:00').toISOString(),
-        isShared: true,
+        isShared,
+        isRecurring,
         currency,
         type,
       });
@@ -104,15 +104,18 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit }: AddT
         category,
         paidBy,
         date: new Date(date + 'T12:00:00').toISOString(), // Middle of day to avoid TZ shifting
-        isShared: true,
+        isShared,
+        isRecurring,
         currency,
         type,
+        syncToGoogle, // Custom flag to be handled by context
       });
     }
     
     // Reset and close
     setAmount("");
     setDescription("");
+    setIsRecurring(false);
     onClose();
   };
 
@@ -233,6 +236,36 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit }: AddT
                 </div>
 
                 <div className="space-y-6">
+
+                    {/* Visibility Section */}
+                    <div>
+                         <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                            Visibilidad
+                        </label>
+                        <div className="flex bg-muted/50 p-1 rounded-xl">
+                            <button
+                                type="button"
+                                onClick={() => setIsShared(true)}
+                                className={cn(
+                                    "flex-1 py-2 text-xs font-semibold rounded-lg transition-all",
+                                    isShared ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                👥 Compartido
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsShared(false)}
+                                className={cn(
+                                    "flex-1 py-2 text-xs font-semibold rounded-lg transition-all",
+                                    !isShared ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                👤 Individual
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Description */}
                     <div>
                         <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
@@ -262,6 +295,50 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit }: AddT
                                     className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all [&::-webkit-calendar-picker-indicator]:cursor-pointer dark:[&::-webkit-calendar-picker-indicator]:invert"
                                 />
                             </div>
+                        </div>
+                        
+                        {/* Recurring Switch */}
+                        <div className="flex items-center gap-3 pt-6 sm:pt-0">
+                            <button
+                                type="button"
+                                onClick={() => setIsRecurring(!isRecurring)}
+                                className={cn(
+                                    "relative h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                                    isRecurring ? "bg-primary" : "bg-muted"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                                        isRecurring ? "translate-x-5" : "translate-x-0"
+                                    )}
+                                />
+                            </button>
+                           <label className="text-sm font-medium text-foreground cursor-pointer" onClick={() => setIsRecurring(!isRecurring)}>
+                                Repetir todos los meses
+                            </label>
+                        </div>
+
+                         {/* Google Sync Switch */}
+                         <div className="flex items-center gap-3 pt-2 sm:pt-0">
+                            <button
+                                type="button"
+                                onClick={() => setSyncToGoogle(!syncToGoogle)}
+                                className={cn(
+                                    "relative h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                                    syncToGoogle ? "bg-blue-600" : "bg-muted"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                                        syncToGoogle ? "translate-x-5" : "translate-x-0"
+                                    )}
+                                />
+                            </button>
+                           <label className="text-sm font-medium text-foreground cursor-pointer" onClick={() => setSyncToGoogle(!syncToGoogle)}>
+                                Sincronizar con Google Calendar
+                            </label>
                         </div>
                     </div>
 
@@ -312,7 +389,9 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit }: AddT
                             : "bg-transparent border-border text-muted-foreground hover:bg-card hover:border-border hover:text-foreground"
                         )}
                         >
-                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200 opacity-80 group-hover:opacity-100">{cat.icon}</span>
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200 opacity-80 group-hover:opacity-100">
+                            <CategoryIcon iconName={cat.icon} className="h-6 w-6" />
+                        </span>
                         <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{cat.name}</span>
                         </button>
                     ))}

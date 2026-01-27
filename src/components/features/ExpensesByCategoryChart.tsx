@@ -1,21 +1,30 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useStore } from "@/context/StoreContext";
 import { cn } from "@/lib/utils";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
+type FilterType = "all" | "individual" | "shared";
+
 export function ExpensesByCategoryChart({ className }: { className?: string }) {
-  const { transactions, categories, getFormattedCurrency } = useStore();
+  const { transactions, categories, getFormattedCurrency, loading } = useStore();
+  const [filter, setFilter] = useState<FilterType>("all");
 
   const data = useMemo(() => {
     if (transactions.length === 0) return [];
 
-    // 1. Filter expenses
-    const expenses = transactions.filter(
-      (t) => t.type === "expense"
-    );
+    // 1. Filter expenses based on Type AND Shared status
+    const expenses = transactions.filter((t) => {
+        if (t.type !== "expense") return false;
+        
+        if (filter === "individual") return t.isShared === false;
+        if (filter === "shared") return t.isShared === true;
+        
+        return true;
+    });
 
     // 2. Group by category
     const categoryTotals: Record<string, number> = {};
@@ -37,15 +46,37 @@ export function ExpensesByCategoryChart({ className }: { className?: string }) {
         return { name, value, color };
       })
       .sort((a, b) => b.value - a.value); 
-  }, [transactions, categories]);
+  }, [transactions, categories, filter]);
+
+  if (loading) {
+     return (
+        <GlassCard className={cn("flex flex-col", className)}>
+            <div className="flex justify-between items-center mb-4">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-8 w-48 rounded-lg" />
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+                 <Skeleton className="h-40 w-40 rounded-full" />
+            </div>
+        </GlassCard>
+     );
+  }
 
   if (transactions.length === 0) return null;
 
   return (
     <GlassCard className={cn("flex flex-col", className)}>
-      <h3 className="text-xl font-bold text-foreground mb-4 shrink-0">
-        Gastos por Categoría
-      </h3>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4 shrink-0">
+          <h3 className="text-lg font-bold text-foreground">
+            Gastos por Categoría
+          </h3>
+          <div className="flex bg-muted p-1 rounded-lg self-stretch sm:self-auto">
+             <button onClick={() => setFilter("all")} className={cn("flex-1 sm:flex-none px-3 py-1 text-[10px] font-medium rounded transition-all", filter === "all" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}>Todo</button>
+             <button onClick={() => setFilter("individual")} className={cn("flex-1 sm:flex-none px-3 py-1 text-[10px] font-medium rounded transition-all", filter === "individual" ? "bg-blue-500 text-white shadow" : "text-muted-foreground hover:text-foreground")}>Individual</button>
+             <button onClick={() => setFilter("shared")} className={cn("flex-1 sm:flex-none px-3 py-1 text-[10px] font-medium rounded transition-all", filter === "shared" ? "bg-purple-500 text-white shadow" : "text-muted-foreground hover:text-foreground")}>Grupal</button>
+          </div>
+      </div>
+
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
