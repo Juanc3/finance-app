@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/Button";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { supabase } from "@/lib/supabase";
-import { Wallet } from "lucide-react";
-import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import { Button } from '@/components/ui/Button';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { supabase } from '@/lib/supabase';
+import { Wallet } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState(""); // For sign up
+  const [name, setName] = useState(''); // For sign up
   const router = useRouter();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -31,8 +31,8 @@ export default function LoginPage() {
             data: {
               name: name,
               // Random color assignment for fun
-              color: Math.random() > 0.5 ? "bg-violet-500" : "bg-emerald-500",
-              hexColor: Math.random() > 0.5 ? "#8b5cf6" : "#10b981",
+              color: Math.random() > 0.5 ? 'bg-violet-500' : 'bg-emerald-500',
+              hexColor: Math.random() > 0.5 ? '#8b5cf6' : '#10b981',
             },
           },
         });
@@ -50,7 +50,7 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push("/");
+        router.push('/');
       }
     } catch (err: any) {
       setError(err.message);
@@ -58,7 +58,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -90,12 +89,12 @@ export default function LoginPage() {
             <Wallet className="h-6 w-6 text-primary-foreground" />
           </div>
           <h2 className="text-3xl font-bold text-foreground tracking-tight">
-            {isSignUp ? "Crear una cuenta" : "Bienvenido"}
+            {isSignUp ? 'Crear una cuenta' : 'Bienvenido'}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {isSignUp
-              ? "Empieza a registrar tus finanzas compartidas hoy"
-              : "Ingresa tus datos para acceder a tu panel"}
+              ? 'Empieza a registrar tus finanzas compartidas hoy'
+              : 'Ingresa tus datos para acceder a tu panel'}
           </p>
         </div>
 
@@ -128,15 +127,13 @@ export default function LoginPage() {
               </svg>
               Continuar con Google
             </Button>
-            
+
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-muted-foreground/20" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  O usa tu correo
-                </span>
+                <span className="bg-background px-2 text-muted-foreground">O usa tu correo</span>
               </div>
             </div>
           </div>
@@ -144,9 +141,7 @@ export default function LoginPage() {
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Nombre
-                </label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Nombre</label>
                 <input
                   autoComplete="name"
                   type="text"
@@ -158,11 +153,9 @@ export default function LoginPage() {
                 />
               </div>
             )}
-            
+
             <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">
-                Correo electrónico
-              </label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Correo electrónico</label>
               <input
                 autoComplete="email"
                 type="email"
@@ -175,9 +168,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">
-                Contraseña
-              </label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Contraseña</label>
               <input
                 autoComplete="password"
                 type="password"
@@ -196,23 +187,19 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? "Cargando..." : isSignUp ? "Registrarse" : "Iniciar Sesión"}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Cargando...' : isSignUp ? 'Registrarse' : 'Iniciar Sesión'}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              {isSignUp ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?"}{" "}
+              {isSignUp ? '¿Ya tienes una cuenta?' : '¿No tienes una cuenta?'}{' '}
               <button
                 onClick={() => setIsSignUp(!isSignUp)}
                 className="font-medium text-primary hover:text-primary/80 transition-colors"
               >
-                {isSignUp ? "Inicia sesión" : "Regístrate"}
+                {isSignUp ? 'Inicia sesión' : 'Regístrate'}
               </button>
             </p>
           </div>

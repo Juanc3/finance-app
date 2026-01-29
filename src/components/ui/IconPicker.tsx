@@ -1,6 +1,6 @@
-import React from "react";
-import { cn } from "@/lib/utils";
-import { AVAILABLE_ICONS } from "./CategoryIcon";
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { AVAILABLE_ICONS } from './CategoryIcon';
 
 interface IconPickerProps {
   selectedIcon: string;
@@ -16,10 +16,10 @@ export function IconPicker({ selectedIcon, onSelect }: IconPickerProps) {
           type="button"
           onClick={() => onSelect(name)}
           className={cn(
-            "aspect-square flex flex-col items-center justify-center rounded-lg hover:bg-muted transition-all gap-1",
-            selectedIcon === name 
-                ? "bg-primary/20 ring-2 ring-primary text-primary" 
-                : "bg-muted/30 text-muted-foreground hover:text-foreground"
+            'aspect-square flex flex-col items-center justify-center rounded-lg hover:bg-muted transition-all gap-1',
+            selectedIcon === name
+              ? 'bg-primary/20 ring-2 ring-primary text-primary'
+              : 'bg-muted/30 text-muted-foreground hover:text-foreground',
           )}
           title={name}
         >

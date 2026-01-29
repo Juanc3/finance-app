@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { GlassCard } from "@/components/ui/GlassCard";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { useStore } from "@/context/StoreContext";
-import { format, parseISO, startOfYear, eachMonthOfInterval, endOfYear } from "date-fns";
-import { es } from "date-fns/locale";
-import React, { useMemo } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { cn } from "@/lib/utils";
-import { TrendingUp } from "lucide-react";
+import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { useStore } from '@/context/StoreContext';
+import { format, parseISO, startOfYear, eachMonthOfInterval, endOfYear } from 'date-fns';
+import { es } from 'date-fns/locale';
+import React, { useMemo } from 'react';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { cn } from '@/lib/utils';
+import { TrendingUp } from 'lucide-react';
 
 export function MonthlyTrendChart({ className }: { className?: string }) {
   const { transactions, loading } = useStore();
@@ -22,26 +22,20 @@ export function MonthlyTrendChart({ className }: { className?: string }) {
     const end = endOfYear(now);
     const months = eachMonthOfInterval({ start, end });
 
-    return months.map(month => {
-      const monthTransactions = transactions.filter(t => {
-          const tDate = parseISO(t.date);
-          return tDate.getMonth() === month.getMonth() && tDate.getFullYear() === month.getFullYear();
+    return months.map((month) => {
+      const monthTransactions = transactions.filter((t) => {
+        const tDate = parseISO(t.date);
+        return tDate.getMonth() === month.getMonth() && tDate.getFullYear() === month.getFullYear();
       });
-      
-      const income = monthTransactions
-          .filter(t => t.type === 'income')
-          .reduce((acc, t) => acc + t.amount, 0);
-          
-      const expense = monthTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((acc, t) => acc + t.amount, 0);
 
-      const saving = monthTransactions
-          .filter(t => t.type === 'saving')
-          .reduce((acc, t) => acc + t.amount, 0);
+      const income = monthTransactions.filter((t) => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+
+      const expense = monthTransactions.filter((t) => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+
+      const saving = monthTransactions.filter((t) => t.type === 'saving').reduce((acc, t) => acc + t.amount, 0);
 
       return {
-        name: format(month, "MMM", { locale: es }),
+        name: format(month, 'MMM', { locale: es }),
         Ingresos: income,
         Gastos: expense,
         Ahorros: saving,
@@ -50,24 +44,24 @@ export function MonthlyTrendChart({ className }: { className?: string }) {
   }, [transactions]);
 
   if (loading) {
-     return <Skeleton className="h-full w-full rounded-xl" />
+    return <Skeleton className="h-full w-full rounded-xl" />;
   }
 
   if (transactions.length === 0) return null;
 
   return (
-    <GlassCard className={cn("flex flex-col min-h-80", className)}>
-        <div className="flex items-center justify-between mb-6 shrink-0">
-             <div className="flex items-center gap-2">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                    <h3 className="text-lg font-bold text-foreground">Tendencias Anuales</h3>
-                    <p className="text-xs text-muted-foreground">Flujo de caja mensual</p>
-                </div>
-             </div>
+    <GlassCard className={cn('flex flex-col min-h-80', className)}>
+      <div className="flex items-center justify-between mb-6 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <TrendingUp className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Tendencias Anuales</h3>
+            <p className="text-xs text-muted-foreground">Flujo de caja mensual</p>
+          </div>
         </div>
+      </div>
 
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -87,52 +81,52 @@ export function MonthlyTrendChart({ className }: { className?: string }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis 
-                dataKey="name" 
-                stroke="var(--muted-foreground)" 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-                tickFormatter={(val) => val.charAt(0).toUpperCase() + val.slice(1)}
+            <XAxis
+              dataKey="name"
+              stroke="var(--muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(val) => val.charAt(0).toUpperCase() + val.slice(1)}
             />
-            <YAxis 
-                stroke="var(--muted-foreground)" 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-                tickFormatter={(value) => `$${value/1000}k`}
+            <YAxis
+              stroke="var(--muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `$${value / 1000}k`}
             />
-            <Tooltip 
-                contentStyle={{ 
-                    backgroundColor: 'var(--card)', 
-                    border: '1px solid var(--border)', 
-                    borderRadius: '8px', 
-                    color: 'var(--foreground)' 
-                }}
-            />
-            <Area
-                type="monotone"
-                dataKey="Ingresos"
-                stroke="#10b981"
-                fillOpacity={1}
-                fill="url(#colorIncome)"
-                strokeWidth={3}
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                color: 'var(--foreground)',
+              }}
             />
             <Area
-                type="monotone"
-                dataKey="Ahorros"
-                stroke="#3b82f6"
-                fillOpacity={1}
-                fill="url(#colorSaving)"
-                strokeWidth={3}
+              type="monotone"
+              dataKey="Ingresos"
+              stroke="#10b981"
+              fillOpacity={1}
+              fill="url(#colorIncome)"
+              strokeWidth={3}
             />
             <Area
-                type="monotone"
-                dataKey="Gastos"
-                stroke="#ef4444"
-                fillOpacity={1}
-                fill="url(#colorExpense)"
-                strokeWidth={3}
+              type="monotone"
+              dataKey="Ahorros"
+              stroke="#3b82f6"
+              fillOpacity={1}
+              fill="url(#colorSaving)"
+              strokeWidth={3}
+            />
+            <Area
+              type="monotone"
+              dataKey="Gastos"
+              stroke="#ef4444"
+              fillOpacity={1}
+              fill="url(#colorExpense)"
+              strokeWidth={3}
             />
           </AreaChart>
         </ResponsiveContainer>

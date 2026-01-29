@@ -1,8 +1,8 @@
-import { Transaction } from "@/context/StoreContext";
+import { Transaction } from '@/context/StoreContext';
 
-export async function createGoogleEvent(provider_token: string, transaction: Omit<Transaction, "id">) {
+export async function createGoogleEvent(provider_token: string, transaction: Omit<Transaction, 'id'>) {
   if (!provider_token) {
-    console.error("No provider token found");
+    console.error('No provider token found');
     return;
   }
 
@@ -21,26 +21,23 @@ export async function createGoogleEvent(provider_token: string, transaction: Omi
       dateTime: endDateTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
-    colorId: transaction.type === "saving" ? "9" : (transaction.type === "income" ? "10" : "11"), // 9=Blue, 10=Green, 11=Red
+    colorId: transaction.type === 'saving' ? '9' : transaction.type === 'income' ? '10' : '11', // 9=Blue, 10=Green, 11=Red
   };
 
   if (transaction.isRecurring) {
     // RRULE for Monthly on the same day
-    eventBody.recurrence = ["RRULE:FREQ=MONTHLY"];
+    eventBody.recurrence = ['RRULE:FREQ=MONTHLY'];
   }
 
   try {
-    const response = await fetch(
-      "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${provider_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventBody),
-      }
-    );
+    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${provider_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventBody),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -50,12 +47,12 @@ export async function createGoogleEvent(provider_token: string, transaction: Omi
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Failed to create Google Event:", error);
+    console.error('Failed to create Google Event:', error);
     throw error;
   }
 }
 
-export async function updateGoogleEvent(provider_token: string, eventId: string, transaction: Omit<Transaction, "id">) {
+export async function updateGoogleEvent(provider_token: string, eventId: string, transaction: Omit<Transaction, 'id'>) {
   if (!provider_token) return;
 
   const startDateTime = new Date(transaction.date);
@@ -72,54 +69,49 @@ export async function updateGoogleEvent(provider_token: string, eventId: string,
       dateTime: endDateTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
-    colorId: transaction.type === "saving" ? "9" : (transaction.type === "income" ? "10" : "11"),
+    colorId: transaction.type === 'saving' ? '9' : transaction.type === 'income' ? '10' : '11',
   };
 
   if (transaction.isRecurring) {
-    eventBody.recurrence = ["RRULE:FREQ=MONTHLY"];
+    eventBody.recurrence = ['RRULE:FREQ=MONTHLY'];
   } else {
     eventBody.recurrence = []; // Clear recurrence if disabled
   }
 
   try {
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${provider_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventBody),
-      }
-    );
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${provider_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventBody),
+    });
 
     if (!response.ok) {
-       console.error(`Failed to update Google Event: ${response.status}`);
+      console.error(`Failed to update Google Event: ${response.status}`);
     }
   } catch (error) {
-    console.error("Failed to update Google Event:", error);
+    console.error('Failed to update Google Event:', error);
   }
 }
 
 export async function deleteGoogleEvent(provider_token: string, eventId: string) {
-    if (!provider_token) return;
+  if (!provider_token) return;
 
-    try {
-        const response = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
-            {
-                method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${provider_token}`,
-                },
-            }
-        );
+  try {
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${provider_token}`,
+      },
+    });
 
-        if (!response.ok && response.status !== 410) { // 410 means already deleted
-            console.error(`Failed to delete Google Event: ${response.status}`);
-        }
-    } catch (error) {
-        console.error("Error deleting Google Event:", error);
+    if (!response.ok && response.status !== 410) {
+      // 410 means already deleted
+      console.error(`Failed to delete Google Event: ${response.status}`);
     }
+  } catch (error) {
+    console.error('Error deleting Google Event:', error);
+  }
 }

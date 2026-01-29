@@ -147,8 +147,12 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit, defaul
   const activeTheme = theme[type];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300"
+      onClick={onClose} // Close on backdrop click
+    >
       <GlassCard
+        onClick={(e) => e.stopPropagation()} // Prevent close when clicking content
         className={cn(
           'w-full max-w-6xl flex flex-col max-h-[90vh] border bg-card shadow-2xl overflow-hidden rounded-3xl ring-1 transition-all duration-500',
           activeTheme.border,
@@ -291,7 +295,7 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit, defaul
                       dateInputRef.current.showPicker();
                     } catch (e) {
                       dateInputRef.current.focus();
-                      console.log(e) // Fallback
+                      console.log(e); // Fallback
                     }
                   }
                 }}
@@ -304,9 +308,9 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit, defaul
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Fecha</span>
                     <span className="text-sm font-semibold">
-                      {date && !isNaN(new Date(date).getTime()) 
+                      {date && !isNaN(new Date(date).getTime())
                         ? format(new Date(date), 'd MMM yyyy, HH:mm', { locale: es })
-                        : "Seleccionar fecha"}
+                        : 'Seleccionar fecha'}
                     </span>
                   </div>
                 </div>

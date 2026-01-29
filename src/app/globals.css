@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --font-sans: var(--font-sans);
@@ -125,7 +125,9 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .dark .glass-card {
@@ -141,8 +143,8 @@ body {
 }
 
 .dark .glass-input {
-   background: rgba(15, 23, 42, 0.4);
-   border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .glass-input:focus {
