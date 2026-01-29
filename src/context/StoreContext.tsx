@@ -376,6 +376,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     processPendingSyncs();
   }, [session?.provider_token, loading, transactions.length]); // Dependency on transactions.length to retry if list grows/changes, but careful with loops.
 
+    // 5. Auto-Fix Past Transactions (One-time check on load)
+    useEffect(() => {
+        if (loading || transactions.length === 0) return;
+
+        const fixPastTransactions = async () => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const pastPending = transactions.filter(t => {
+                const tDate = new Date(t.date);
+                // If date is before today AND status is not paid (i.e. pending or undefined)
+                return tDate < today && t.status !== 'paid';
+            });
+
+            if (pastPending.length === 0) return;
+
+            // Update local state immediately
+            setTransactions(prev => prev.map(t => {
+                const tDate = new Date(t.date);
+                if (tDate < today && t.status !== 'paid') {
+                    return { ...t, status: 'paid' };
+                }
+                return t;
+            }));
+
+            // Batch update in DB (or loop if batch not supported easily, simple loop is fine for now)
+            for (const tx of pastPending) {
+                 await supabase.from("transactions")
+                    .update({ status: 'paid' })
+                    .eq("id", tx.id);
+            }
+        };
+
+        fixPastTransactions();
+    }, [loading, transactions.length]); // Run when loaded
+
   const markAsPaid = async (id: string) => {
       // Optimistic update
       setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'paid' } : t));
