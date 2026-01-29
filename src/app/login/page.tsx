@@ -148,6 +148,7 @@ export default function LoginPage() {
                   Nombre
                 </label>
                 <input
+                  autoComplete="name"
                   type="text"
                   required
                   value={name}
@@ -163,6 +164,7 @@ export default function LoginPage() {
                 Correo electrónico
               </label>
               <input
+                autoComplete="email"
                 type="email"
                 required
                 value={email}
@@ -177,6 +179,7 @@ export default function LoginPage() {
                 Contraseña
               </label>
               <input
+                autoComplete="password"
                 type="password"
                 required
                 value={password}

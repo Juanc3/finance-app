@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -26,6 +27,7 @@ export type Transaction = {
   type: 'income' | 'expense' | 'saving';
   groupId?: string;
   status?: 'pending' | 'paid'; // New field
+  google_event_id?: string; // New field for sync
 };
 
 export type Category = {
@@ -43,7 +45,7 @@ export type StoreContextType = {
   addTransaction: (transaction: Omit<Transaction, "id"> & { syncToGoogle?: boolean }) => void;
   editTransaction: (id: string, transaction: Partial<Omit<Transaction, "id">>) => void;
   deleteTransaction: (id: string) => void;
-  markAsPaid: (id: string) => void; // New function
+  markAsPaid: (id: string) => void;
   getFormattedCurrency: (amount: number, currency?: string) => string;
   categories: Category[];
   addCategory: (category: Omit<Category, "id">) => void;
@@ -142,6 +144,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           type: t.type || 'expense',
           groupId: t.group_id,
           status: t.status || 'pending', // Map status
+          google_event_id: t.google_event_id, // Map google ID
         }));
         setTransactions(mappedTxs);
       }
@@ -225,7 +228,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session]);
+  }, [session?.user?.id]);
 
   const updateGroup = async (newGroupId: string) => {
     if (!session?.user) return;
@@ -276,7 +279,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // If t.isShared is false -> Individual Transaction -> group_id = null
     const targetGroupId = t.isShared ? myGroupId : null;
 
-    const { error } = await supabase.from("transactions").insert({
+    const { data: insertedData, error } = await supabase.from("transactions").insert({
       amount: t.amount,
       description: t.description,
       category: t.category,
@@ -287,29 +290,91 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       currency: t.currency,
       type: t.type,
       group_id: targetGroupId || null,
-    });
+    }).select().single();
 
     if (error) {
       console.error("Error adding transaction:", error);
       // Revert optimistic update
       setTransactions((prev) => prev.filter((x) => x.id !== tempId));
     } else {
-        // Sync to Google Calendar if requested
-        console.log("Transaction added. Sync to Google?", t.syncToGoogle);
-        console.log("Provider Token Present?", !!session?.provider_token);
-        
+        // Sync to Google Calendar if requested        
         if (t.syncToGoogle && session?.provider_token) {
-            console.log("Attempting to sync with Google Calendar...");
-            import("@/lib/googleCalendar").then(({ createGoogleEvent }) => {
-                createGoogleEvent(session.provider_token!, t)
-                    .then((data) => console.log("✅ Synced to Google Calendar:", data))
+            import("@/lib/googleCalendar").then(async ({ createGoogleEvent }) => {
+                const event = await createGoogleEvent(session.provider_token!, t)
                     .catch(err => console.error("❌ Failed to sync to Google:", err));
+                
+                // If created successfully, save the Google Event ID
+                if (event && event.id && insertedData) {
+                    await supabase.from("transactions")
+                        .update({ google_event_id: event.id })
+                        .eq("id", insertedData.id);
+
+                    // Update local state immediately to show badge
+                    setTransactions((prev) => 
+                        prev.map((tx) => 
+                            // Update both the tempId version (if still there) or the real ID version
+                           (tx.id === tempId || tx.id === insertedData.id) 
+                                ? { ...tx, google_event_id: event.id, id: insertedData.id } // Ensure ID is real too
+                                : tx
+                        )
+                    );
+                }
             });
         } else if (t.syncToGoogle && !session?.provider_token) {
-            console.warn("⚠️ Sync requested but no Google Token found. Please re-login.");
+            // OFFLINE SYNC: Mark as pending
+             console.log("⚠️ Offline Sync requested. Marking as PENDING_SYNC.");
+             
+             if (insertedData) {
+                 await supabase.from("transactions")
+                    .update({ google_event_id: 'PENDING_SYNC' })
+                    .eq("id", insertedData.id);
+                 
+                  setTransactions((prev) => 
+                        prev.map((tx) => 
+                           (tx.id === tempId || tx.id === insertedData.id) 
+                                ? { ...tx, google_event_id: 'PENDING_SYNC', id: insertedData.id }
+                                : tx
+                        )
+                    );
+             }
         }
     }
   };
+
+  // 4. Auto-Process Pending Syncs when Token becomes available
+  useEffect(() => {
+    if (!session?.provider_token || loading) return;
+
+    const processPendingSyncs = async () => {
+        // Find transactions waiting for sync
+        const pendingTxs = transactions.filter(t => t.google_event_id === 'PENDING_SYNC');
+
+        if (pendingTxs.length === 0) return;
+
+        console.log(`🔄 Found ${pendingTxs.length} pending transactions to sync with Google...`);
+
+        const { createGoogleEvent } = await import("@/lib/googleCalendar");
+        
+        for (const tx of pendingTxs) {
+            try {
+                const event = await createGoogleEvent(session.provider_token!, tx);
+                 if (event && event.id) {
+                     // Update DB
+                     await supabase.from("transactions")
+                        .update({ google_event_id: event.id })
+                        .eq("id", tx.id);
+                     
+                     // Update Local State
+                     setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, google_event_id: event.id } : t));
+                 }
+            } catch (err) {
+                console.error(`❌ Failed to auto-sync transaction ${tx.id}:`, err);
+            }
+        }
+    };
+
+    processPendingSyncs();
+  }, [session?.provider_token, loading, transactions.length]); // Dependency on transactions.length to retry if list grows/changes, but careful with loops.
 
   const markAsPaid = async (id: string) => {
       // Optimistic update
@@ -327,35 +392,97 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
   };
 
-  const editTransaction = async (id: string, updates: Partial<Omit<Transaction, "id">>) => {
+  const editTransaction = async (id: string, updates: Partial<Omit<Transaction, "id"> & { syncToGoogle?: boolean }>) => {
+    // Determine sync behavior logic BEFORE optimistic updates
+    const existingTx = transactions.find(t => t.id === id);
+    const syncToGoogle = updates.syncToGoogle;
+    // Strip syncToGoogle from updates object for DB
+    const { syncToGoogle: _, ...dbUpdates } = updates;
+
     // Optimistic
     const prevTxs = [...transactions];
     setTransactions((prev) => 
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      prev.map((t) => (t.id === id ? { ...t, ...dbUpdates } : t))
     );
 
     const { error } = await supabase
       .from("transactions")
       .update({
-        amount: updates.amount,
-        description: updates.description,
-        category: updates.category,
-        paid_by: updates.paidBy,
-        date: updates.date,
-        is_shared: updates.isShared,
-        is_recurring: updates.isRecurring,
-        currency: updates.currency,
-        type: updates.type,
+        amount: dbUpdates.amount,
+        description: dbUpdates.description,
+        category: dbUpdates.category,
+        paid_by: dbUpdates.paidBy,
+        date: dbUpdates.date,
+        is_shared: dbUpdates.isShared,
+        is_recurring: dbUpdates.isRecurring,
+        currency: dbUpdates.currency,
+        type: dbUpdates.type,
+        google_event_id: dbUpdates.google_event_id,
       })
       .eq("id", id);
 
     if (error) {
       console.error("Error editing transaction:", error);
       setTransactions(prevTxs);
+    } else {
+        // Handle Google Sync
+        if (session?.provider_token && existingTx) {
+            import("@/lib/googleCalendar").then(async ({ createGoogleEvent, updateGoogleEvent }) => {
+                
+                // Case 1: Already has ID -> Update it
+                if (existingTx.google_event_id) {
+                     // MERGE updates with existing data to ensure full object
+                     const fullTxData = { ...existingTx, ...dbUpdates };
+                     await updateGoogleEvent(session.provider_token!, existingTx.google_event_id, fullTxData);
+                } 
+                // Case 2: No ID, but Sync toggled ON -> Create it
+                else if (syncToGoogle) {
+                    const fullTxData = { ...existingTx, ...dbUpdates };
+                    
+                    // Check token again just in case (though we checked outside)
+                    // Actually, the outside check `if (session?.provider_token && existingTx)` prevents us from reaching here if no token!
+                    // We need to move the logic or change the condition.
+                    // Wait, existing structure is: 
+                    // if (session?.provider_token && existingTx) { ... } 
+                    
+                    // We need to handle the NO TOKEN case for edit too. 
+                    // See below.
+                     const event = await createGoogleEvent(session.provider_token!, fullTxData);
+                     
+                     if (event && event.id) {
+                        await supabase.from("transactions")
+                            .update({ google_event_id: event.id })
+                            .eq("id", id);
+                        
+                        // Update local state immediately
+                        setTransactions((prev) => 
+                            prev.map((tx) => 
+                                tx.id === id ? { ...tx, google_event_id: event.id } : tx
+                            )
+                        );
+                     }
+                }
+            });
+        } else if (!session?.provider_token && existingTx && syncToGoogle && !existingTx.google_event_id) {
+             // Case 3: Offline Sync Request on Edit
+             console.log("⚠️ Offline Sync requested on Edit. Marking as PENDING_SYNC.");
+             
+             await supabase.from("transactions")
+                .update({ google_event_id: 'PENDING_SYNC' })
+                .eq("id", id);
+             
+             setTransactions((prev) => 
+                prev.map((tx) => 
+                    tx.id === id ? { ...tx, google_event_id: 'PENDING_SYNC' } : tx
+                )
+             );
+        }
     }
   };
 
   const deleteTransaction = async (id: string) => {
+    const existingTx = transactions.find(t => t.id === id);
+
     // Optimistic
     const prevTxs = [...transactions];
     setTransactions((prev) => prev.filter((t) => t.id !== id));
@@ -365,6 +492,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       console.error("Error deleting transaction:", error);
       setTransactions(prevTxs);
+    } else {
+        // Delete from Google Calendar if linked
+        if (existingTx?.google_event_id && session?.provider_token) {
+            import("@/lib/googleCalendar").then(({ deleteGoogleEvent }) => {
+                deleteGoogleEvent(session.provider_token!, existingTx.google_event_id!)
+                    .catch(err => console.error("Failed to delete Google Event", err));
+            });
+        }
     }
   };
 

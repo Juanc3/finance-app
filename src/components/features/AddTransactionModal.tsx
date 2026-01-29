@@ -1,15 +1,16 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/Button";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { useStore, Transaction } from "@/context/StoreContext";
-import { cn } from "@/lib/utils";
-import { Plus, X, ChevronDown } from "lucide-react";
-import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import React, { useState, useRef, useEffect } from "react";
-import { format } from "date-fns";
+import { Button } from '@/components/ui/Button';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { useStore, Transaction } from '@/context/StoreContext';
+import { cn } from '@/lib/utils';
+import { Plus, X, ChevronDown, Calendar, Repeat, RefreshCw, User, Check } from 'lucide-react';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import React, { useState, useRef, useEffect } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-const CURRENCIES = ["ARS", "USD", "EUR", "GBP", "BRL"];
+const CURRENCIES = ['ARS', 'USD', 'EUR', 'GBP', 'BRL'];
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -20,64 +21,70 @@ interface AddTransactionModalProps {
 
 export function AddTransactionModal({ isOpen, onClose, transactionToEdit, defaultDate }: AddTransactionModalProps) {
   const { addTransaction, editTransaction, currentUser, users, categories } = useStore();
-  
-  // State
-  const [type, setType] = useState<"income" | "expense" | "saving">("expense");
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("ARS");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [paidBy, setPaidBy] = useState("");
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [isShared, setIsShared] = useState(true); // Default to shared
-  const [syncToGoogle, setSyncToGoogle] = useState(false);
-  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load data if editing
+  // State
+  const [type, setType] = useState<'income' | 'expense' | 'saving'>('expense');
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('ARS');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [paidBy, setPaidBy] = useState('');
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [isShared, setIsShared] = useState(true);
+  const [syncToGoogle, setSyncToGoogle] = useState(false);
+
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+
+  // Referencias
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null); // <--- NUEVA REFERENCIA
+
   useEffect(() => {
     if (transactionToEdit) {
-      setType(transactionToEdit.type || "expense");
+      setType(transactionToEdit.type || 'expense');
       setAmount(transactionToEdit.amount.toString());
-      setCurrency(transactionToEdit.currency || "ARS");
+      setCurrency(transactionToEdit.currency || 'ARS');
       setDescription(transactionToEdit.description);
       setCategory(transactionToEdit.category);
       setPaidBy(transactionToEdit.paidBy);
-      setDate(format(new Date(transactionToEdit.date), "yyyy-MM-dd"));
+      setDate(format(new Date(transactionToEdit.date), "yyyy-MM-dd'T'HH:mm"));
       setIsRecurring(transactionToEdit.isRecurring || false);
       setIsShared(transactionToEdit.isShared ?? true);
+      setSyncToGoogle(!!transactionToEdit.google_event_id);
     } else {
-      // Reset defaults
-      setType("expense");
-      setAmount("");
-      setDescription("");
+      setType('expense');
+      setAmount('');
+      setDescription('');
+      setCategory('');
       setIsRecurring(false);
       setIsShared(true);
+      setSyncToGoogle(false);
       if (currentUser) setPaidBy(currentUser.id);
-      // We generally want to preserve currency or default to USD, but reset if opening blank
-      setCurrency("ARS");
-      setDate(defaultDate ? format(defaultDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
+      setCurrency('ARS');
+      setDate(defaultDate ? format(defaultDate, "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     }
     setIsCurrencyOpen(false);
   }, [transactionToEdit, isOpen, currentUser, defaultDate]);
 
-  // Handle click outside for currency dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCurrencyOpen(false);
       }
     };
-
-    if (isCurrencyOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (isCurrencyOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCurrencyOpen]);
+
+  const handleUserCycle = () => {
+    if (!users.length) return;
+    const currentIndex = users.findIndex((u) => u.id === paidBy);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % users.length;
+    setPaidBy(users[nextIndex].id);
+  };
+
+  const selectedPayer = users.find((u) => u.id === paidBy) || currentUser || users[0];
 
   if (!isOpen) return null;
 
@@ -85,346 +92,377 @@ export function AddTransactionModal({ isOpen, onClose, transactionToEdit, defaul
     e.preventDefault();
     if (!amount || !description || !paidBy || !category) return;
 
+    // Validate date
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return; // Prevent invalid dates
+
+    const payload = {
+      amount: parseFloat(amount),
+      description,
+      category,
+      paidBy,
+      date: dateObj.toISOString(),
+      isShared,
+      isRecurring,
+      currency,
+      type,
+      syncToGoogle,
+    };
+
     if (transactionToEdit) {
-      editTransaction(transactionToEdit.id, {
-        amount: parseFloat(amount),
-        description,
-        category,
-        paidBy,
-        date: new Date(date + 'T12:00:00').toISOString(),
-        isShared,
-        isRecurring,
-        currency,
-        type,
-      });
+      editTransaction(transactionToEdit.id, payload);
     } else {
-      addTransaction({
-        amount: parseFloat(amount),
-        description,
-        category,
-        paidBy,
-        date: new Date(date + 'T12:00:00').toISOString(), // Middle of day to avoid TZ shifting
-        isShared,
-        isRecurring,
-        currency,
-        type,
-        syncToGoogle, // Custom flag to be handled by context
-      });
+      addTransaction(payload);
     }
-    
-    // Reset and close
-    setAmount("");
-    setDescription("");
+    setAmount('');
+    setDescription('');
     setIsRecurring(false);
     onClose();
   };
 
+  const theme = {
+    expense: {
+      color: 'text-red-500',
+      bg: 'bg-red-500',
+      bgSoft: 'bg-red-500/10',
+      border: 'border-red-500/20',
+      gradient: 'from-red-500/20 to-transparent',
+    },
+    income: {
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-500',
+      bgSoft: 'bg-emerald-500/10',
+      border: 'border-emerald-500/20',
+      gradient: 'from-emerald-500/20 to-transparent',
+    },
+    saving: {
+      color: 'text-blue-500',
+      bg: 'bg-blue-500',
+      bgSoft: 'bg-blue-500/10',
+      border: 'border-blue-500/20',
+      gradient: 'from-blue-500/20 to-transparent',
+    },
+  };
+
+  const activeTheme = theme[type];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
-      <GlassCard className="w-full max-w-5xl flex flex-col h-dvh sm:h-auto sm:max-h-[90vh] border-x-0 border-b-0 sm:border border-border bg-card shadow-2xl overflow-hidden sm:rounded-2xl ring-1 ring-border">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
-            <h2 className="text-2xl font-bold text-foreground tracking-tight">
-              {transactionToEdit ? "Editar Transacción" : "Nueva Transacción"}
-            </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+      <GlassCard
+        className={cn(
+          'w-full max-w-6xl flex flex-col max-h-[90vh] border bg-card shadow-2xl overflow-hidden rounded-3xl ring-1 transition-all duration-500',
+          activeTheme.border,
+        )}
+      >
+        {/* --- HEADER --- */}
+        <div className="relative p-5 shrink-0 z-10 flex items-center justify-between border-b border-border/40">
+          <div
+            className={cn(
+              'absolute inset-0 bg-linear-to-b opacity-40 transition-all duration-500 pointer-events-none rounded-2xl',
+              activeTheme.gradient,
+            )}
+          />
+
+          <div className="relative z-10 flex items-center gap-3">
             <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-muted rounded-full"
+              onClick={onClose}
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-muted/50 hover:bg-muted text-muted-foreground transition-all"
             >
-            <X className="h-6 w-6" />
+              <X className="h-4 w-4" />
             </button>
+            <h2 className="text-lg font-bold tracking-tight hidden sm:block">
+              {transactionToEdit ? 'Editar' : 'Nueva'} Transacción
+            </h2>
+          </div>
+
+          <div className="relative z-10 flex bg-muted/50 p-1 rounded-full border border-border/50">
+            {(['expense', 'income', 'saving'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={cn(
+                  'relative px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 z-10',
+                  type === t ? 'text-white shadow-md' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {type === t && (
+                  <span
+                    className={cn('absolute inset-0 rounded-full -z-10 transition-all duration-300', theme[t].bg)}
+                  />
+                )}
+                {t === 'expense' ? 'Gasto' : t === 'income' ? 'Ingreso' : 'Ahorro'}
+              </button>
+            ))}
+          </div>
         </div>
-        
-        {/* Main Content - Grid Layout */}
-        <div className="flex-1 overflow-y-auto p-8">
-            <form id="transaction-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-            
-              {/* Left Column: Inputs (5/12) */}
-              <div className="lg:col-span-5 space-y-8">
-                
-                {/* Type Switcher - Minimalist */}
-                <div className="grid grid-cols-3 gap-1 bg-muted p-1 rounded-xl">
-                    <button
-                        type="button"
-                        onClick={() => setType("expense")}
-                        className={cn(
-                            "py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-center",
-                            type === "expense" 
-                                ? "bg-card text-red-500 shadow-sm" 
-                                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                        )}
-                    >
-                        Gasto
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setType("income")}
-                        className={cn(
-                            "py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-center",
-                            type === "income" 
-                                ? "bg-card text-emerald-500 shadow-sm" 
-                                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                        )}
-                    >
-                        Ingresos
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setType("saving")}
-                        className={cn(
-                            "py-2.5 px-4 rounded-lg text-sm font-medium transition-all text-center",
-                            type === "saving" 
-                                ? "bg-card text-blue-500 shadow-sm" 
-                                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                        )}
-                    >
-                        Ahorros
-                    </button>
-                </div>
 
-                {/* Amount Input - Clean & Big */}
-                <div>
-                     <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                        Monto
-                    </label>
-                    <div className="group relative flex items-baseline border-b border-border focus-within:border-primary transition-colors pb-2">
-                         <span className="text-muted-foreground font-bold text-4xl mr-2 group-focus-within:text-foreground transition-colors">$</span>
-                        <input
-                            type="number"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            placeholder="0.00"
-                            className="flex-1 bg-transparent border-none p-0 text-4xl sm:text-5xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-0"
-                            autoFocus
-                        />
-                         
-                         {/* Custom Currency Dropdown Trigger */}
-                         <div className="relative ml-4" ref={dropdownRef}>
-                            <button
-                                type="button"
-                                onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
-                                className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors uppercase"
-                            >
-                                {currency}
-                                <ChevronDown className={cn("h-3 w-3 transition-transform", isCurrencyOpen && "rotate-180")} />
-                            </button>
+        {/* --- MAIN CONTENT (Balanced Grid) --- */}
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+          {/* LEFT COLUMN: Expanded to 50% width */}
+          <div className="lg:w-1/2 flex flex-col p-6 lg:p-8 gap-8 overflow-y-auto custom-scrollbar border-r border-border/30">
+            {/* 1. AMOUNT INPUT SECTION (Horizontal Layout) */}
+            <div className="relative flex flex-col items-center justify-center py-8 shrink-0 group">
+              <div className="absolute inset-0 rounded-3xl overflow-hidden bg-muted/10 border border-border/50">
+                <div
+                  className={cn(
+                    'absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-linear-to-tr',
+                    activeTheme.gradient,
+                  )}
+                />
+              </div>
 
-                            {/* Dropdown Menu - Anchored to Trigger */}
-                            {isCurrencyOpen && (
-                                <div className="absolute right-0 top-full mt-2 w-24 bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                                    {CURRENCIES.map((c) => (
-                                        <button
-                                            key={c}
-                                            type="button"
-                                            onClick={() => {
-                                                setCurrency(c);
-                                                setIsCurrencyOpen(false);
-                                            }}
-                                            className={cn(
-                                                "w-full px-4 py-2.5 text-xs font-bold text-left transition-colors hover:bg-muted",
-                                                currency === c ? "text-primary bg-muted" : "text-muted-foreground"
-                                            )}
-                                        >
-                                            {c}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+              <div className="relative z-10 flex items-center justify-center w-full gap-4 px-4">
+                {/* A. Currency Selector (Left side) */}
+                <div className="relative shrink-0" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
+                    className="flex items-center gap-1 px-3 py-2 rounded-xl bg-background/50 hover:bg-background border border-border/50 text-xs font-bold text-muted-foreground hover:text-foreground transition-all uppercase tracking-wide"
+                  >
+                    {currency}{' '}
+                    <ChevronDown className={cn('h-3 w-3 transition-transform', isCurrencyOpen && 'rotate-180')} />
+                  </button>
 
-                <div className="space-y-6">
-
-                    {/* Visibility Section */}
-                    <div>
-                         <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                            Visibilidad
-                        </label>
-                        <div className="flex bg-muted/50 p-1 rounded-xl">
-                            <button
-                                type="button"
-                                onClick={() => setIsShared(true)}
-                                className={cn(
-                                    "flex-1 py-2 text-xs font-semibold rounded-lg transition-all",
-                                    isShared ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                👥 Compartido
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsShared(false)}
-                                className={cn(
-                                    "flex-1 py-2 text-xs font-semibold rounded-lg transition-all",
-                                    !isShared ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                👤 Individual
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                            Descripción
-                        </label>
-                        <input
-                        type="text"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="¿Para qué es esto?"
-                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-                        />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Date */}
-                        <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                                Fecha
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="date"
-                                    value={date}
-                                    style={{ colorScheme: "var(--color-scheme, dark)" }} // Dynamic handling or explicit
-                                    onChange={(e) => setDate(e.target.value)}
-                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all [&::-webkit-calendar-picker-indicator]:cursor-pointer dark:[&::-webkit-calendar-picker-indicator]:invert"
-                                />
-                            </div>
-                        </div>
-                        
-                        {/* Recurring Switch */}
-                        <div className="flex items-center gap-3 pt-6 sm:pt-0">
-                            <button
-                                type="button"
-                                onClick={() => setIsRecurring(!isRecurring)}
-                                className={cn(
-                                    "relative h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                                    isRecurring ? "bg-primary" : "bg-muted"
-                                )}
-                            >
-                                <span
-                                    className={cn(
-                                        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                                        isRecurring ? "translate-x-5" : "translate-x-0"
-                                    )}
-                                />
-                            </button>
-                           <label className="text-sm font-medium text-foreground cursor-pointer" onClick={() => setIsRecurring(!isRecurring)}>
-                                Repetir todos los meses
-                            </label>
-                        </div>
-
-                         {/* Google Sync Switch */}
-                         <div className="flex items-center gap-3 pt-2 sm:pt-0">
-                            <button
-                                type="button"
-                                onClick={() => setSyncToGoogle(!syncToGoogle)}
-                                className={cn(
-                                    "relative h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                                    syncToGoogle ? "bg-blue-600" : "bg-muted"
-                                )}
-                            >
-                                <span
-                                    className={cn(
-                                        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                                        syncToGoogle ? "translate-x-5" : "translate-x-0"
-                                    )}
-                                />
-                            </button>
-                           <label className="text-sm font-medium text-foreground cursor-pointer" onClick={() => setSyncToGoogle(!syncToGoogle)}>
-                                Sincronizar con Google Calendar
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Paid By */}
-                    <div>
-                         <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                            Pagado Por
-                        </label>
-                        <div className="flex gap-3">
-                        {users.map((user) => (
-                            <button
-                            key={user.id}
+                  {isCurrencyOpen && (
+                    <div className="absolute left-0 top-full mt-2 w-24 bg-popover border border-border/60 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 ring-1 ring-black/10">
+                      <div className="py-1">
+                        {CURRENCIES.map((c) => (
+                          <button
+                            key={c}
                             type="button"
-                            onClick={() => setPaidBy(user.id)}
+                            onClick={() => {
+                              setCurrency(c);
+                              setIsCurrencyOpen(false);
+                            }}
                             className={cn(
-                                "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 border",
-                                paidBy === user.id
-                                ? "bg-muted text-foreground border-border" // Review this: might need better active state
-                                : "bg-transparent border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                              'w-full px-3 py-2 text-xs font-bold text-left hover:bg-muted/50 transition-colors',
+                              currency === c && activeTheme.color,
                             )}
-                            style={paidBy === user.id ? { backgroundColor: 'var(--muted)', borderColor: 'var(--border)' } : {}}
-                            >
-                                <span className={cn("h-2 w-2 rounded-full", user.color)}></span>
-                                {user.name}
-                            </button>
+                          >
+                            {c}
+                          </button>
                         ))}
-                        </div>
+                      </div>
                     </div>
+                  )}
+                </div>
+
+                {/* B. Symbol & Input */}
+                <div className="flex items-center gap-1 min-w-0">
+                  <span
+                    className={cn(
+                      'text-4xl sm:text-5xl font-light text-muted-foreground transition-colors pb-1',
+                      activeTheme.color,
+                    )}
+                  >
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0"
+                    className="bg-transparent border-none p-0 text-5xl sm:text-6xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground/20 focus:outline-none focus:ring-0 w-full min-w-15 max-w-75 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    autoFocus
+                  />
                 </div>
               </div>
+            </div>
 
-              {/* Right Column: Categories (7/12) */}
-              <div className="lg:col-span-7 flex flex-col h-full min-h-100">
-                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                    Categoría
-                </label>
-                <div className="flex-1 bg-muted/50 rounded-2xl border border-border p-6">
-                    <div className="grid grid-cols-4 gap-4 h-full content-start">
-                    {categories.map((cat) => (
-                        <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setCategory(cat.name)}
-                        className={cn(
-                            "aspect-square flex flex-col items-center justify-center gap-3 p-2 rounded-xl transition-all duration-200 border group",
-                            category === cat.name
-                            ? "bg-card border-primary/50 text-foreground shadow-lg shadow-black/5"
-                            : "bg-transparent border-border text-muted-foreground hover:bg-card hover:border-border hover:text-foreground"
-                        )}
-                        >
-                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200 opacity-80 group-hover:opacity-100">
-                            <CategoryIcon iconName={cat.icon} className="h-6 w-6" />
-                        </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{cat.name}</span>
-                        </button>
-                    ))}
-                    <button
-                        type="button"
-                        className="aspect-square flex flex-col items-center justify-center gap-2 p-2 rounded-xl transition-all duration-200 border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/20 hover:bg-muted/50"
+            {/* 2. DESCRIPTION */}
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="¿En qué gastaste?"
+              className="w-full bg-transparent border-b border-border/30 py-3 text-xl text-center text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-foreground transition-all shrink-0"
+            />
+
+            {/* 3. SETTINGS GRID (Matches wider column) */}
+            <div className="grid grid-cols-2 gap-4 mt-auto">
+              {/* Date Picker MODIFICADO */}
+              <div
+                className="relative col-span-2 bg-muted/20 rounded-2xl p-4 flex items-center justify-between hover:bg-muted/30 transition-colors border border-transparent hover:border-border/30 group cursor-pointer"
+                onClick={() => {
+                  // Forzar la apertura del calendario al hacer click en el contenedor
+                  if (dateInputRef.current) {
+                    try {
+                      dateInputRef.current.showPicker();
+                    } catch (e) {
+                      dateInputRef.current.focus();
+                      console.log(e) // Fallback
+                    }
+                  }
+                }}
+              >
+                {/* Visual */}
+                <div className="flex items-center gap-4 pointer-events-none">
+                  <div className="p-2.5 bg-background rounded-xl text-muted-foreground group-hover:text-foreground transition-colors shadow-sm">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Fecha</span>
+                    <span className="text-sm font-semibold">
+                      {date && !isNaN(new Date(date).getTime()) 
+                        ? format(new Date(date), 'd MMM yyyy, HH:mm', { locale: es })
+                        : "Seleccionar fecha"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Input Real con Referencia */}
+                <input
+                  ref={dateInputRef}
+                  type="datetime-local"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                />
+              </div>
+
+              {/* Pagado Por */}
+              <button
+                type="button"
+                onClick={handleUserCycle}
+                className="bg-muted/20 rounded-2xl p-4 flex flex-col justify-between hover:bg-muted/30 transition-all border border-transparent hover:border-border/30 text-left min-h-25"
+              >
+                <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2">
+                  <User className="h-3 w-3" /> Pagado por
+                </span>
+
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      'h-8 w-8 rounded-full border-2 border-border/50 flex items-center justify-center shrink-0 shadow-sm transition-transform active:scale-95',
+                      selectedPayer?.color,
+                    )}
+                  ></div>
+                  <span className="text-sm font-bold truncate">{selectedPayer?.name || 'Seleccionar'}</span>
+                </div>
+              </button>
+
+              {/* Shared Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsShared(!isShared)}
+                className={cn(
+                  'bg-muted/20 rounded-2xl p-4 flex flex-col justify-between transition-all border border-transparent hover:border-border/30 text-left min-h-25',
+                  isShared ? 'bg-background shadow-md border-border/10' : 'hover:bg-muted/30',
+                )}
+              >
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">Tipo</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl leading-none filter drop-shadow-sm">{isShared ? '👥' : '👤'}</span>
+                  <span className="text-sm font-bold">{isShared ? 'Compartido' : 'Individual'}</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Adjusted to 50% width */}
+          <div className="lg:w-1/2 bg-muted/5 flex flex-col p-6 lg:p-8 overflow-hidden">
+            <div className="flex items-center justify-between mb-6 px-1">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Categoría</label>
+              <span className="text-[10px] bg-muted px-2 py-0.5 rounded-md text-muted-foreground font-medium">
+                {categories.length} opciones
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+              <div className="grid grid-cols-4 gap-4 content-start">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategory(cat.name)}
+                    className={cn(
+                      'aspect-square flex flex-col items-center justify-center gap-3 p-2 rounded-2xl transition-all duration-300 border relative group overflow-hidden',
+                      category === cat.name
+                        ? cn('border-transparent shadow-xl scale-105 z-10', activeTheme.bg, 'text-white')
+                        : 'bg-background border-border/40 text-muted-foreground hover:bg-background hover:border-border hover:text-foreground hover:shadow-lg hover:-translate-y-0.5',
+                    )}
+                  >
+                    {category === cat.name && (
+                      <div className="absolute top-2 right-2 animate-in zoom-in duration-200">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
+                    <span
+                      className={cn(
+                        'text-3xl transition-transform duration-300',
+                        category === cat.name
+                          ? 'scale-110'
+                          : 'group-hover:scale-110 opacity-70 group-hover:opacity-100',
+                      )}
                     >
-                        <Plus className="h-6 w-6 opacity-50" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-50">Agregar</span>
-                    </button>
-                    </div>
-                </div>
+                      <CategoryIcon iconName={cat.icon} className="h-7 w-7" />
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wide truncate w-full text-center opacity-90">
+                      {cat.name}
+                    </span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="aspect-square flex flex-col items-center justify-center gap-3 p-2 rounded-2xl transition-all border border-dashed border-border/50 text-muted-foreground/50 hover:text-primary hover:border-primary/50 hover:bg-primary/5 group"
+                >
+                  <Plus className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                  <span className="text-[10px] font-bold uppercase">Crear</span>
+                </button>
               </div>
-            </form>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-border bg-card flex justify-end gap-3 transition-all">
-             <Button 
-                variant="ghost" 
-                onClick={onClose}
-                className="text-muted-foreground hover:text-foreground"
+        {/* --- FOOTER --- */}
+        <div className="p-4 lg:p-5 border-t border-border/50 bg-card/50 flex items-center gap-4 shrink-0 rounded-xl">
+          <div className="flex items-center gap-3 mr-auto">
+            <button
+              type="button"
+              onClick={() => setIsRecurring(!isRecurring)}
+              className={cn(
+                'h-11 px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border',
+                isRecurring
+                  ? cn(activeTheme.bgSoft, activeTheme.color, activeTheme.border)
+                  : 'bg-transparent border-transparent text-muted-foreground hover:bg-muted/50',
+              )}
             >
-                Cancelar
-            </Button>
-            <Button 
-                onClick={(e) => handleSubmit(e as any)} 
-                className="px-6 h-11 text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 rounded-lg hover:shadow-primary/40 transition-all"
-            >
-                {transactionToEdit ? "Guardar Cambios" : "Agregar Transacción"}
-            </Button>
-        </div>
+              <Repeat className="h-4 w-4" />
+              <span className="hidden sm:inline">{isRecurring ? 'Mensual' : 'Repetir'}</span>
+            </button>
 
+            <button
+              type="button"
+              onClick={() => setSyncToGoogle(!syncToGoogle)}
+              className={cn(
+                'h-11 px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all border',
+                syncToGoogle
+                  ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                  : 'bg-transparent border-transparent text-muted-foreground hover:bg-muted/50',
+              )}
+            >
+              <RefreshCw className={cn('h-4 w-4', syncToGoogle && 'animate-spin-once')} />
+              <span>Google</span>
+            </button>
+          </div>
+
+          {!transactionToEdit && (
+            <Button variant="ghost" onClick={onClose} className="text-muted-foreground hover:text-foreground h-11 px-6">
+              Cancelar
+            </Button>
+          )}
+          <Button
+            onClick={(e) => handleSubmit(e as any)}
+            className={cn(
+              'px-8 h-11 text-sm font-bold shadow-lg transition-all rounded-xl hover:scale-[1.02] active:scale-[0.98] text-white',
+              activeTheme.bg,
+              `shadow-${activeTheme.bg}/20`,
+            )}
+          >
+            {transactionToEdit ? 'Guardar' : 'Agregar'}
+          </Button>
+        </div>
       </GlassCard>
     </div>
   );

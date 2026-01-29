@@ -32,10 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      console.log("Auth Session Loaded:", { 
-        hasSession: !!session, 
-        hasProviderToken: !!session?.provider_token 
-      });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -54,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, []);
 
   const signOut = async () => {
     try {

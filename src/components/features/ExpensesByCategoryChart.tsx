@@ -77,7 +77,7 @@ export function ExpensesByCategoryChart({ className }: { className?: string }) {
           </div>
       </div>
 
-      <div className="flex-1 w-full min-h-0">
+      <div className="flex-1 w-full min-h-75">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

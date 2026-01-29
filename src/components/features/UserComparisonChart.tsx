@@ -56,7 +56,7 @@ export function UserComparisonChart({ className }: { className?: string }) {
   return (
     <GlassCard className={cn("flex flex-col", className)}>
       <h3 className="text-xl font-bold text-foreground mb-4 shrink-0">Comparación de Usuarios</h3>
-      <div className="flex-1 w-full min-h-0">
+      <div className="flex-1 w-full min-h-75">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <XAxis 

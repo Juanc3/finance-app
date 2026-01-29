@@ -18,7 +18,6 @@ export function useGoogleCalendar(currentMonth: Date) {
   useEffect(() => {
     async function fetchEvents() {
       if (!session) {
-        console.log("No session found");
         return;
       }
       
@@ -35,8 +34,6 @@ export function useGoogleCalendar(currentMonth: Date) {
       const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
       const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 0, 23, 59, 59);
       
-      console.log("Fetching Google Events (Widened Range)", { start: start.toISOString(), end: end.toISOString() });
-
       try {
         const queryParams = new URLSearchParams({
           timeMin: start.toISOString(),
@@ -66,7 +63,6 @@ export function useGoogleCalendar(currentMonth: Date) {
         }
 
         const data = await response.json();
-        console.log("Google Events Fetched:", data.items?.length, data.items);
         setEvents(data.items || []);
       } catch (err: any) {
         console.error("Error fetching Google Calendar:", err);

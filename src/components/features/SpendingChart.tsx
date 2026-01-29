@@ -58,7 +58,7 @@ export function SpendingChart({ className }: { className?: string }) {
                 <Skeleton className="h-6 w-40" />
                 <Skeleton className="h-8 w-32 rounded-lg" />
             </div>
-            <div className="flex-1 w-full min-h-0">
+            <div className="flex-1 w-full min-h-75">
                  <Skeleton className="h-full w-full rounded-xl" />
             </div>
         </GlassCard>
@@ -100,7 +100,7 @@ export function SpendingChart({ className }: { className?: string }) {
           </div>
       </div>
 
-      <div className="flex-1 w-full min-h-0">
+      <div className="flex-1 w-full min-h-75">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
